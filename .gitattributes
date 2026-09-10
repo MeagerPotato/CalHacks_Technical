@@ -1,0 +1,11 @@
+# Normalize line endings in the repository (Vercel and Supabase containers are Linux).
+* text=auto eol=lf
+
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
