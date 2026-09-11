@@ -114,6 +114,10 @@ If onboarding finds the session expired, it sends the applicant to sign in and b
 - **No pause control.** The panel has no controls of its own; the readings follow the clock. The pause toggle was removed on 2026-09-11 at the user's request, so the per-second update is no longer pausable, which WCAG 2.2.2 asks for. Restoring it means putting the toggle back in `CountdownPanel` and the paused state back in `LiveCountdowns`.
 - **Screen readers.** The digits are `aria-hidden`. A visually hidden summary gives the time left to the minute.
 
+## Demo accounts
+
+`components/auth/DemoAccounts.tsx` lists shared demo logins under the sign-in form, from `COPY.auth.demo.accounts`, so a reviewer can reach both sides of the product without being sent credentials. Remove the component from `app/(auth)/login/page.tsx` to hide them.
+
 ## Accessibility
 
 - A skip link to `main#main` is the first focusable element on every page, and each page has one `main`. The root layout renders it through `app/_components/SkipToContent.tsx`, which focuses `main` directly.

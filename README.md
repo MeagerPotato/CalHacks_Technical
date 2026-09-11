@@ -5,6 +5,15 @@ submission to decision, and organizers review and grade those applications behin
 
 **Live:** https://calhackstechnical.vercel.app
 
+## Demo accounts
+
+Both logins are listed on the sign-in page as well. They hold sample data in the hosted project.
+
+| Role | Email | Password |
+|---|---|---|
+| Organizer | `organizer@calhacks.com` | `ILoveHacking` |
+| Applicant | `applicant@gmail.com` | `ILoveRockets` |
+
 ## What it does
 
 **Applicants**
