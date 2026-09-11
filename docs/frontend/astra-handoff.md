@@ -1,5 +1,7 @@
 # Astra handoff: creative pass, round 2
 
+> **Status:** Astra delivered round 2 on 2026-09-11 with no open requests, and it passed the full test suites. Keep this brief for follow-up design passes.
+
 The product works end to end:
 
 - signup (Hacker, Judge, or both), login, and onboarding;

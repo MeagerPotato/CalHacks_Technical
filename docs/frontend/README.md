@@ -104,7 +104,7 @@ If onboarding finds the session expired, it sends the applicant to sign in and b
 
 `EVENT_SCHEDULE` in `lib/event.ts` holds the dates. Pages call `toScheduleViews(EVENT_SCHEDULE)` once per request. It reads the clock outside render and builds both view models for that moment:
 
-- `toTimelineView` (`lib/view-models/schedule.ts`) builds the landing page's four stops: applications open, application deadline, results released, and event dates. Each stop is `complete` once it is over, `active` while in progress (applications while open, the event while it runs), and `upcoming` otherwise. The current stop is the active one, or the next upcoming one when none is; its label reads "Up next". After the event, no stop is current.
+- `toTimelineView` (`lib/view-models/schedule.ts`) builds the landing page's four stops: applications open, application deadline, results released, and event dates. Each stop is `complete` once it is over, `active` while in progress (applications while open, the event while it runs), and `upcoming` otherwise. The current stop is the active one, or the next upcoming one when none is; its state label is `COPY.schedule.timeline.states.next`. After the event, no stop is current.
 - `toCountdownsView` builds the countdown panel: `launch` counts to the application deadline, and `landing` counts to midnight Pacific on the first event day. Each countdown appears only when its date is set.
 
 `LiveCountdowns` (`app/_components/LiveCountdowns.tsx`) renders `CountdownPanel` on the landing page and both portal dashboards:
@@ -129,12 +129,12 @@ If onboarding finds the session expired, it sends the applicant to sign in and b
 ## Configuration
 
 - `lib/event.ts` sets the event time zone used for every displayed timestamp, and `EVENT_SCHEDULE`. It holds the Cal Hacks 13.0 regular round published on calhacks.io:
-  - Applications open: no published date, so it shows "Open now".
+  - Applications open: no published date, so it shows `COPY.schedule.timeline.openNow`.
   - Application deadline (`APPLICATION_DEADLINE`): 11:59 PM Pacific on September 20, 2026. Nothing closes when it passes.
   - Results released: September 25, 2026.
   - Event: October 23 to 25, 2026. No start time is published, so the landing countdown ends at midnight Pacific on October 23.
 
-  Set any date to `null` to show "To be announced". Dates published without a time are stored as midnight Pacific and shown as dates.
+  Set any date to `null` to show `COPY.schedule.timeline.toBeAnnounced`. Dates published without a time are stored as midnight Pacific and shown as dates.
 - `SITE_URL` and hosted Auth settings are described in [environment-and-deployment.md](../infrastructure/environment-and-deployment.md).
 
 ## Tests

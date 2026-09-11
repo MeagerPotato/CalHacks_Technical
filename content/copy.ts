@@ -449,7 +449,7 @@ export const ORGANIZER_COPY = {
     },
   },
   nav: {
-    label: "Mission Control navigation",
+    label: "Mission Control",
     dashboard: "Dashboard",
     applications: "Applications",
   },

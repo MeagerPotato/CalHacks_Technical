@@ -20,7 +20,7 @@ export function OrganizerNav({ label, items }: OrganizerNavProps) {
           <li
             key={item.id}
             data-current={item.current ?? "false"}
-            className="rounded-full border-2 border-transparent data-[current=page]:border-border data-[current=page]:bg-highlight data-[current=true]:border-border data-[current=true]:bg-highlight"
+            className="rounded-full border-2 border-transparent px-3 data-[current=page]:border-border data-[current=page]:bg-highlight data-[current=true]:border-border data-[current=true]:bg-highlight"
           >
             <AppLink
               href={item.href}
