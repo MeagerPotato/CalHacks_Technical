@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { DemoAccounts } from "@/components/auth/DemoAccounts";
 import { AuthShell } from "@/components/layout/AuthShell";
 import { AppLink } from "@/components/ui/AppLink";
 import { Notice } from "@/components/ui/Notice";
@@ -36,6 +37,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </Notice>
       ) : null}
       <LoginForm next={nextPath} />
+      <DemoAccounts />
     </AuthShell>
   );
 }

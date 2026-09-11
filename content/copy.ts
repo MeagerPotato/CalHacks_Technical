@@ -184,6 +184,16 @@ export const COPY = {
         `We sent a confirmation link to ${email}. Open it in this browser to finish creating your account.`,
       signInLink: "Go to sign in",
     },
+    demo: {
+      title: "Demo accounts",
+      body: "For reviewing this project. These are shared demo logins with sample data, not real accounts.",
+      emailLabel: "Email",
+      passwordLabel: "Password",
+      accounts: [
+        { label: "Organizer", email: "organizer@calhacks.com", password: "ILoveHacking" },
+        { label: "Applicant", email: "applicant@gmail.com", password: "ILoveRockets" },
+      ],
+    },
     callbackErrors: {
       link_expired: {
         title: "That link has expired",
