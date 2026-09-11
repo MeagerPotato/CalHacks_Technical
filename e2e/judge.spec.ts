@@ -33,7 +33,10 @@ test("a new Judge signs up, onboards, saves a partial draft, sees Launch Readine
   await page.getByLabel(COPY.onboarding.displayName).fill("Signup Judge");
   await page.getByRole("button", { name: COPY.onboarding.submit }).click();
 
-  await expect(page).toHaveURL(/\/portal\/application\?type=judge&section=about$/);
+  // Onboarding creates the draft and opens the portal dashboard, not the editor.
+  await expect(page).toHaveURL(/\/portal$/);
+
+  await page.goto("/portal/application?type=judge&section=about");
   await expect(
     page.getByRole("heading", { level: 1, name: COPY.editor.title(APPLICATION_TYPE_LABELS.judge) }),
   ).toBeVisible();

@@ -42,7 +42,7 @@ test.describe("authentication", () => {
     expect(await queryRows("select 1 from auth.users where email = $1", [email])).toHaveLength(0);
   });
 
-  test("a new Hacker signs up, finishes onboarding, and starts the application", async ({ page }) => {
+  test("a new Hacker signs up, finishes onboarding, and lands on the portal", async ({ page }) => {
     await page.goto(ROUTES.signup);
     await page.getByRole("checkbox", { name: ACCOUNT_ROLE_LABELS.hacker }).check();
     await page.getByLabel(COPY.auth.signup.email).fill(uniqueEmail("signup-hacker"));
@@ -54,7 +54,11 @@ test.describe("authentication", () => {
     await page.getByLabel(COPY.onboarding.displayName).fill("Signup Hacker");
     await page.getByRole("button", { name: COPY.onboarding.submit }).click();
 
-    await expect(page).toHaveURL(/\/portal\/application\?type=hacker&section=about$/);
+    // Onboarding creates the draft and opens the portal dashboard, not the editor.
+    await expect(page).toHaveURL(/\/portal$/);
+    await expect(page.getByTestId("launch-readiness")).toBeVisible();
+
+    await page.goto(ROUTES.portalApplication);
     await expect(page.locator("#section-heading-about")).toBeVisible();
   });
 

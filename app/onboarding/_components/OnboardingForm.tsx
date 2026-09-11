@@ -29,7 +29,7 @@ const SIGN_IN_AGAIN_HREF = `${ROUTES.login}?next=${encodeURIComponent(ROUTES.onb
 interface OnboardingFormProps {
   /** Labels of the applications chosen at signup, in form order. */
   applicationTypeLabels: readonly string[];
-  /** Where to go once every draft exists: the editor for the first application. */
+  /** Where to go once every draft exists: the portal dashboard. */
   continueHref: string;
   /** The saved display name. When null a display name is required before the applications are created. */
   defaultDisplayName: string | null;
@@ -37,7 +37,7 @@ interface OnboardingFormProps {
 
 /**
  * Confirms the applications chosen at signup, saves the display name when it changed, then creates every draft
- * application (idempotent) and opens the editor for the first one.
+ * application (idempotent) and opens the portal dashboard.
  */
 export function OnboardingForm({ applicationTypeLabels, continueHref, defaultDisplayName }: OnboardingFormProps) {
   const router = useRouter();
