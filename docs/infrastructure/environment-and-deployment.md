@@ -11,6 +11,10 @@ Recorded on 2026-09-11:
   - The event runs October 23 to 25, 2026.
 
   The landing page timeline and the countdowns on the landing page and the portal show these dates. Nothing enforces the deadline: applicants can still save and submit after it passes.
+- **Database migrations:** the hosted Supabase project is connected to this repository through the Supabase GitHub integration, with working directory `.` and production branch `main`.
+  - With **Deploy to production** on, each push or merge to `main` applies the new files in `supabase/migrations`.
+  - Only migrations deploy. The integration ignores the Auth and API settings in `supabase/config.toml` and the seed file.
+  - Vercel deploys `main` to Production at the same time. A failed migration therefore leaves new code running on the old schema, so check the Supabase deployment after every merge that adds a migration.
 - **Confirm email:** on in the hosted Supabase project. Applicants receive confirmation emails only after custom SMTP is configured (see [Hosted Supabase](#hosted-supabase), step 3).
 - **Origin for confirmation links:** `SITE_URL` stays unset, so links use Vercel's production URL (`VERCEL_PROJECT_PRODUCTION_URL`).
 
