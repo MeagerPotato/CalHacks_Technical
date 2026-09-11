@@ -41,8 +41,8 @@ export function ApplicationFilters({ filters, onSubmit, pending = false, formRef
         onSubmit={onSubmit}
         className="mt-4 flex flex-col gap-4"
       >
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <div className="md:col-span-2 xl:col-span-1">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="md:col-span-2 xl:col-span-4">
             <Field id={search.id} label={search.label} hint={search.hint}>
               {(control) => (
                 <input

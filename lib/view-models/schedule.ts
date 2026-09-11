@@ -133,9 +133,7 @@ export function toCountdownsView(schedule: EventSchedule, now: number): Countdow
     timers.push({ id: "landing", ...countdown.landing, target: eventDay, endsAt: eventStart.iso });
   }
 
-  return timers.length === 0
-    ? null
-    : { title: countdown.title, pauseLabel: countdown.pause, renderedAt: now, timers };
+  return timers.length === 0 ? null : { title: countdown.title, renderedAt: now, timers };
 }
 
 export interface ScheduleViews {

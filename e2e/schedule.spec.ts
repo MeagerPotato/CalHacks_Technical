@@ -39,7 +39,7 @@ test("the landing page timeline lists the configured schedule in order", async (
   expect(await section.locator('[aria-current="step"]').count()).toBeLessThanOrEqual(1);
 });
 
-test("the countdowns tick every second, and the pause toggle freezes and resumes them", async ({ page }) => {
+test("the countdowns tick every second", async ({ page }) => {
   // The server renders with the real clock; once the countdowns hydrate they read this browser clock instead.
   await page.clock.install({ time: new Date("2026-09-11T11:59:00-07:00") });
   await page.goto(ROUTES.home);
@@ -58,20 +58,4 @@ test("the countdowns tick every second, and the pause toggle freezes and resumes
   const running = await seconds.textContent();
   await page.clock.runFor(2000);
   await expect(seconds).not.toHaveText(running ?? "");
-
-  const toggle = page.getByRole("button", { name: countdown.pause });
-  await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByTestId("countdowns")).toHaveAttribute("data-paused", "true");
-
-  const frozen = await seconds.textContent();
-  await page.clock.runFor(5000);
-  await expect(seconds).toHaveText(frozen ?? "");
-
-  // The toggle keeps focus, so the keyboard resumes it.
-  await toggle.press("Space");
-  await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  await page.clock.runFor(2000);
-  await expect(seconds).not.toHaveText(frozen ?? "");
 });

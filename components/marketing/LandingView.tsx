@@ -31,8 +31,8 @@ export interface LandingViewProps {
 }
 
 /**
- * The public landing page (PROJECT_PLAN.md section 14): a compact nav, the hero, the countdowns, the portal card with
- * the Apply now and Sign in links, the mission timeline, and the Assemble, Launch, and Explore promise cards.
+ * The public landing page (PROJECT_PLAN.md section 14): a compact nav, the hero, the mission timeline, the portal
+ * card with the Apply now and Sign in links, the countdowns, and the Assemble, Launch, and Explore promise cards.
  */
 export function LandingView({ countdowns, timeline }: LandingViewProps) {
   return (
@@ -69,7 +69,7 @@ export function LandingView({ countdowns, timeline }: LandingViewProps) {
           <HeroArt />
         </div>
 
-        {countdowns}
+        <MissionTimeline view={timeline} />
 
         <div className="grid items-center gap-8 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <Card labelledBy={PORTAL_CARD_TITLE_ID} data-testid="landing-portal-card">
@@ -93,7 +93,7 @@ export function LandingView({ countdowns, timeline }: LandingViewProps) {
           </div>
         </div>
 
-        <MissionTimeline view={timeline} />
+        {countdowns}
 
         {/* role="list" keeps list semantics in Safari, which drops them from lists styled with list-style: none. */}
         <ul role="list" data-testid="landing-promises" className="grid gap-4 pb-6 md:grid-cols-3">

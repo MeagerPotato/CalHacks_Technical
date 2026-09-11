@@ -285,7 +285,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
       <GallerySection
         id="gallery-schedule"
         title="Mission clock"
-        description="The live countdowns as the landing page and the portal show them. Pause stops both."
+        description="The live countdowns as the landing page and the portal show them."
       >
         {liveCountdowns ? <LiveCountdowns view={liveCountdowns} /> : null}
       </GallerySection>
@@ -294,14 +294,13 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
           key={example.id}
           id={`gallery-schedule-${example.id}`}
           title={`Schedule: ${example.label}`}
-          description="The timeline and a paused countdown panel at this moment."
+          description="The timeline and the countdown panel at this moment."
         >
           <MissionTimeline view={example.timeline} headingId={`gallery-timeline-${example.id}`} />
           {example.countdowns ? (
             <CountdownPanel
               view={example.countdowns}
               readings={example.readings}
-              paused
               headingId={`gallery-countdowns-${example.id}`}
             />
           ) : null}

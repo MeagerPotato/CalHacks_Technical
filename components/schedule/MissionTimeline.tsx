@@ -49,38 +49,43 @@ export function MissionTimeline({ view, headingId = "mission-timeline-title" }: 
           {view.title}
         </h2>
       </div>
-      <svg aria-hidden="true" viewBox="0 0 1000 90" preserveAspectRatio="none" className="absolute top-36 right-12 left-12 hidden h-20 lg:block">
-        <path d="M8 63C170 5 310 82 487 38S815 4 992 55" fill="none" stroke="var(--color-navy)" strokeWidth="3" strokeDasharray="4 10" strokeLinecap="round" />
-      </svg>
-      <span aria-hidden="true" className="absolute top-28 bottom-10 left-10 border-l-2 border-dashed border-border sm:hidden" />
-      {/* role="list" keeps list semantics in Safari, which drops them from lists styled with list-style: none. */}
-      <ol role="list" className="relative grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {view.stops.map((stop) => (
-          <li
-            key={stop.id}
-            data-testid={`timeline-stop-${stop.id}`}
-            data-state={stop.state}
-            data-current={stop.isCurrent ? "true" : "false"}
-            aria-current={stop.isCurrent ? "step" : undefined}
-            className={STOP_CLASSES}
-          >
-            <span aria-hidden="true" className="inline-flex size-9 items-center justify-center rounded-full border-2 border-border bg-page group-data-[current=true]:bg-accent">
-              {stop.isCurrent ? <Rocket className="size-5 -rotate-45" /> : <span className="size-2.5 rounded-full bg-ink" />}
-            </span>
-            <h3 className="text-xl font-bold">{stop.name}</h3>
-            {stop.when || stop.whenText ? (
-              <p className="font-semibold">
-                <Timestamp value={stop.when} fallback={stop.whenText ?? ""} />
-              </p>
-            ) : null}
-            <div>
-              <Badge tone={STATE_TONES[stop.state]} icon={STATE_ICONS[stop.state]}>
-                {stop.stateLabel}
-              </Badge>
-            </div>
-          </li>
-        ))}
-      </ol>
+      {/* The dashed route runs down through the markers while the stops stack, and across them from lg up. Markers are
+          placed from each card's padding box, so complete stops, with their 6px top border, move up 4px to stay on it. */}
+      <div className="relative">
+        <span aria-hidden="true" className="absolute top-10 bottom-10 left-4 border-l-2 border-dashed border-border lg:top-[18px] lg:right-[12.5%] lg:bottom-auto lg:left-[12.5%] lg:border-t-2 lg:border-l-0" />
+        {/* role="list" keeps list semantics in Safari, which drops them from lists styled with list-style: none. */}
+        <ol role="list" className="relative grid gap-4 pl-11 lg:grid-cols-4 lg:pt-16 lg:pl-0">
+          {view.stops.map((stop) => (
+            <li
+              key={stop.id}
+              data-testid={`timeline-stop-${stop.id}`}
+              data-state={stop.state}
+              data-current={stop.isCurrent ? "true" : "false"}
+              aria-current={stop.isCurrent ? "step" : undefined}
+              className={STOP_CLASSES}
+            >
+              <span aria-hidden="true" className="absolute top-5 -left-[47px] inline-flex size-9 items-center justify-center rounded-full border-2 border-border bg-page group-data-[current=true]:bg-accent lg:-top-16 lg:left-1/2 lg:-translate-x-1/2 group-data-[state=complete]:lg:-top-[68px]">
+                {stop.isCurrent ? <Rocket className="size-5 -rotate-45" /> : <span className="size-2.5 rounded-full bg-ink" />}
+              </span>
+              <h3 className="text-xl font-bold">{stop.name}</h3>
+              {stop.when || stop.whenText ? (
+                <p className="font-semibold">
+                  <Timestamp value={stop.when} fallback={stop.whenText ?? ""} />
+                </p>
+              ) : null}
+              {/* An upcoming stop that is not the current one shows no badge. The current stop always keeps its state
+                  as text, so it is never marked by color alone. */}
+              {stop.isCurrent || stop.state !== "upcoming" ? (
+                <div>
+                  <Badge tone={STATE_TONES[stop.state]} icon={STATE_ICONS[stop.state]}>
+                    {stop.stateLabel}
+                  </Badge>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </div>
     </section>
   );
 }
