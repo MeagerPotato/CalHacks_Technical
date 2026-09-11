@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import { COPY, LOCKED } from "@/content/copy";
+import { APPLICATION_DEADLINE } from "@/lib/event";
+import { toTimestampView } from "@/lib/format/datetime";
 import { ROUTES } from "@/lib/routes";
 import { getSectionLabel } from "@/lib/view-models/fields";
 
@@ -94,9 +96,19 @@ test.describe("Hacker application journey", () => {
     await expect(boxes.nth(0)).toBeEnabled();
   });
 
-  test("the portal shows progress and Launch Readiness links into the editor", async ({ page }) => {
+  test("the portal shows progress, the deadline, and Launch Readiness links into the editor", async ({ page }) => {
     await page.goto(ROUTES.portal);
     await expect(page.getByTestId("progress-card")).toBeVisible();
+
+    // The configured deadline, formatted in the event time zone, or "To be announced" while none is set.
+    const deadline = toTimestampView(APPLICATION_DEADLINE);
+    const deadlineCard = page.getByTestId("deadline-card");
+    if (deadline) {
+      await expect(deadlineCard.locator("time")).toHaveAttribute("datetime", deadline.iso);
+      await expect(deadlineCard).toContainText(deadline.label);
+    } else {
+      await expect(deadlineCard).toContainText(COPY.portal.deadlineTba);
+    }
 
     const readiness = page.getByTestId("launch-readiness");
     await expect(readiness.getByTestId("readiness-item-about")).toHaveAttribute("data-state", /complete|in_progress/);

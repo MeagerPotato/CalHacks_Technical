@@ -112,7 +112,7 @@ If onboarding finds the session expired, it sends the applicant to sign in and b
 
 ## Configuration
 
-- `lib/event.ts` sets the event time zone used for every displayed timestamp. `APPLICATION_DEADLINE` is `null`, which shows "To be announced"; set an ISO timestamp when the deadline is announced.
+- `lib/event.ts` sets the event time zone used for every displayed timestamp, and `APPLICATION_DEADLINE`: 5:00 PM Pacific on September 11, 2026 (`2026-09-11T17:00:00-07:00`). The portal's deadline card displays it; nothing closes when it passes. Set it to `null` to show "To be announced".
 - `SITE_URL` and hosted Auth settings are described in [environment-and-deployment.md](../infrastructure/environment-and-deployment.md).
 
 ## Tests

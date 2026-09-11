@@ -10,6 +10,7 @@ export const EVENT_TIME_ZONE = "America/Los_Angeles";
 
 /**
  * Application deadline as an ISO 8601 instant with an explicit UTC offset, or null while it is to be announced (the
- * portal then shows `COPY.portal.deadlineTba`). Set the real ISO deadline when the user provides it; never guess one.
+ * portal then shows `COPY.portal.deadlineTba`). Only set a deadline the event has announced; never guess one.
  */
-export const APPLICATION_DEADLINE: string | null = null;
+// 5:00 PM Pacific Daylight Time on September 11, 2026.
+export const APPLICATION_DEADLINE: string | null = "2026-09-11T17:00:00-07:00";

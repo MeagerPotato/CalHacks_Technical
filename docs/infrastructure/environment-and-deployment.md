@@ -1,5 +1,13 @@
 # Environment and deployment
 
+## Deployment decisions
+
+Recorded on 2026-09-11:
+
+- **Application deadline:** 5:00 PM Pacific on September 11, 2026 (`APPLICATION_DEADLINE` in `lib/event.ts`). The portal displays it. Nothing enforces it: applicants can still save and submit after it passes.
+- **Confirm email:** on in the hosted Supabase project. Applicants receive confirmation emails only after custom SMTP is configured (see [Hosted Supabase](#hosted-supabase), step 3).
+- **Origin for confirmation links:** `SITE_URL` stays unset, so links use Vercel's production URL (`VERCEL_PROJECT_PRODUCTION_URL`).
+
 ## Environment variables
 
 The application reads two required variables and one optional one:
@@ -8,7 +16,7 @@ The application reads two required variables and one optional one:
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `http://127.0.0.1:54321` | `https://<project-ref>.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_…` from `supabase status` | Dashboard → Project Settings → API Keys → publishable key |
-| `SITE_URL` (optional, server-only) | Leave unset; `http://localhost:3000` is used | Leave unset on Vercel, or set the public origin when the app is served from another domain |
+| `SITE_URL` (optional, server-only) | Leave unset; `http://localhost:3000` is used | Leave unset on Vercel (this deployment's decision). Set the public origin only when the app is served from a domain Vercel does not report as production. |
 
 - **Confirmation-link origin.** `signUp` sends Supabase an `emailRedirectTo` of `<origin>/auth/callback`. `getSiteUrl()` in `lib/env.ts` chooses the origin in this order:
   1. `SITE_URL`, which must be an `http://` or `https://` URL (any path is ignored);
@@ -87,7 +95,7 @@ Only promote an account you just created. With email confirmation off, anyone ca
 
 ## Hosted Supabase
 
-No hosted project has been created or linked in Phase 1. When deploying:
+The repository does not create or link a hosted project. When deploying:
 
 1. **Create a project.** Use Postgres 17 to match `major_version` in `supabase/config.toml`.
 
@@ -104,13 +112,14 @@ No hosted project has been created or linked in Phase 1. When deploying:
 
 3. **Configure Auth in the dashboard.** `supabase/config.toml` holds local values, so do not run `supabase config push` without reviewing `supabase config diff` first. Set:
 
-   - **Authentication → Sign In / Providers → Email:** keep email signup enabled, then decide whether **Confirm email** stays on:
-     - **On (the hosted default).** `signUp` returns `requiresEmailConfirmation: true`, the signup page asks the applicant to check their email, and the link completes at `/auth/callback` in the same browser. Email addresses are verified. Supabase's built-in email service is meant for testing: it has a low hourly limit and may deliver only to your organization's members. Configure custom SMTP before a real event.
-     - **Off.** Applicants are signed in immediately, but email addresses are not verified. That is why the Organizer account must be created before the URL is shared (step 4).
+   - **Authentication → Sign In / Providers → Email:** keep email signup enabled and **Confirm email** on (the hosted default, and this deployment's decision). `signUp` returns `requiresEmailConfirmation: true`, the signup page asks the applicant to check their email, and the link completes at `/auth/callback` in the same browser.
+   - **Custom SMTP (Authentication → Emails → SMTP Settings):** configure it before sharing the link, with a provider such as Resend, Postmark, or Amazon SES. Without it, Supabase's built-in sender delivers only to members of the project's organization (other addresses fail with "Email address not authorized") and sends only a few emails per hour, so applicants could not confirm their accounts. Once custom SMTP is on, Supabase starts at 30 emails per hour; raise the email limit under **Authentication → Rate Limits** to cover the expected signups.
+   - **Fallback if SMTP cannot be ready in time:** turn **Confirm email** off. Applicants are then signed in immediately, but email addresses are not verified, so create the Organizer account before the URL is shared (step 4).
    - **Password minimum length:** 8.
    - **URL Configuration:**
-     - Site URL: the production URL.
-     - Redirect URLs: `http://localhost:3000/**`, `https://*-<vercel-team-slug>.vercel.app/**`, and `https://<production-domain>/auth/callback`. Supabase refuses a confirmation redirect that is not on this list.
+     - Site URL: the Vercel production URL, such as `https://<project>.vercel.app`, or the production custom domain if one is assigned.
+     - Redirect URLs: `https://<production-domain>/auth/callback`. Add `http://localhost:3000/**` to test locally against the hosted project, and `https://*-<vercel-team-slug>.vercel.app/**` only to test signup on Preview deployments. Supabase refuses a confirmation redirect that is not on this list.
+     - If you add a custom domain later, Vercel's production URL becomes that domain, so update the Site URL and the redirect list to match.
    - **Rate Limits:** the default is 30 sign-ups plus sign-ins per 5 minutes per IP. Server Actions call Supabase Auth from Vercel's servers, so many visitors may share an IP. Raise the limit if a live demo needs it.
 
 4. **Create the Organizer account.** Create the user in **Authentication → Users** with auto-confirm. You can instead sign up through the deployed app and stop at onboarding without starting an application. Then immediately run in the SQL editor:
@@ -128,10 +137,10 @@ No hosted project has been created or linked in Phase 1. When deploying:
 ## Vercel
 
 1. **Import the repository.** Vercel detects Next.js automatically, so no `vercel.json` is needed.
-2. **Add the variables.** Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for **Production** and **Preview** (and **Development** if you use `vercel env pull`). Redeploy after any change.
+2. **Add the variables.** Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for **Production** and **Preview** (and **Development** if you use `vercel env pull`). Leave `SITE_URL` unset. Redeploy after any change.
 3. **Node.js version.** Vercel takes it from `engines` (`>=22.12.0`), which currently resolves to Node.js 24.
 4. **Function region.** Set it close to the Supabase region under **Settings → Functions**. `proxy.ts` runs on the Node.js runtime and is deployed as Routing Middleware in every region.
-5. **Deployment Protection.** Preview deployments may require Vercel login. Run signed-out and incognito checks against the production URL.
+5. **Deployment Protection.** Preview deployments may require Vercel login. Run signed-out and incognito checks, including a full signup with a real inbox, against the production URL.
 6. **Check for leaked secrets.** After a build, this should find nothing:
 
    ```bash
