@@ -60,8 +60,8 @@ You need Node.js 22.12 or newer and Docker Desktop.
 
 - **No organizer UI yet.** Phase 2 builds the applicant pages. The organizer pages are Phase 3.
 - **Email confirmation.**
-  - It is off locally and, since 2026-09-11, off in the hosted project too: a signup receives a session at once and no email is sent. `/auth/callback` still completes confirmation links (PKCE code flow only) if it is turned back on.
-  - Turning it on requires custom SMTP, because Supabase's built-in sender emails only members of the project's organization (see [environment-and-deployment.md](environment-and-deployment.md#deployment-decisions)).
+  - It is off locally. Hosted projects turn it on by default, and Phase 2's `/auth/callback` route completes confirmation links (PKCE code flow only).
+  - This deployment keeps it on, so the hosted project needs custom SMTP: Supabase's built-in sender emails only members of the project's organization (see [environment-and-deployment.md](environment-and-deployment.md#deployment-decisions)).
   - A confirmation link works only in the browser where the account was created, because the PKCE verifier is a cookie in that browser. Anywhere else, `/login` explains that the link must be opened in the same browser.
   - With confirmation on, `signUp` returns `requiresEmailConfirmation: true` and the signup page shows a check-your-email notice.
   - With confirmation on, Supabase also reports success for an already-registered email instead of `email_taken`, to prevent account enumeration.
