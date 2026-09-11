@@ -19,6 +19,9 @@ import type { Json } from "@/types/database";
 
 type ReviewMode = "draft" | "complete";
 
+/** Read-merge-write attempts before a save that keeps losing races returns "conflict". */
+const MAX_WRITE_ATTEMPTS = 3;
+
 function fromDataAccessError(context: string, error: unknown): ActionFailure {
   if (error instanceof DataAccessError) {
     return fail(error.code);
@@ -39,118 +42,111 @@ async function writeReview(
     return fail("not_found");
   }
 
-  const { data: application, error: loadError } = await supabase
-    .from("applications")
-    .select(
-      "id, application_type, status, review:reviews!reviews_application_id_fkey(id, reviewer_id, rubric_scores, notes, recommendation, completed_at)",
-    )
-    .eq("id", applicationId)
-    .maybeSingle();
+  for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
+    const { data: application, error: loadError } = await supabase
+      .from("applications")
+      .select(
+        "id, application_type, status, review:reviews!reviews_application_id_fkey(id, reviewer_id, rubric_scores, notes, recommendation, completed_at, updated_at)",
+      )
+      .eq("id", applicationId)
+      .maybeSingle();
 
-  if (loadError) {
-    return failFromDatabase(`${mode}Review:load`, loadError);
-  }
-  if (!application) {
-    return fail("not_found");
-  }
-  if (application.status === "draft") {
-    return fail("invalid_status_transition");
-  }
-  if (isDecisionStatus(application.status)) {
-    return fail("review_locked");
-  }
+    if (loadError) {
+      return failFromDatabase(`${mode}Review:load`, loadError);
+    }
+    if (!application) {
+      return fail("not_found");
+    }
+    if (application.status === "draft") {
+      return fail("invalid_status_transition");
+    }
+    if (isDecisionStatus(application.status)) {
+      return fail("review_locked");
+    }
 
-  const existing = application.review;
-  if (existing && existing.reviewer_id !== viewer.userId) {
-    return fail("review_owned_by_another_organizer");
-  }
-  if (mode === "draft" && existing?.completed_at) {
-    return fail("review_already_completed");
-  }
+    const existing = application.review;
+    if (existing && existing.reviewer_id !== viewer.userId) {
+      return fail("review_owned_by_another_organizer");
+    }
+    if (mode === "draft" && existing?.completed_at) {
+      return fail("review_already_completed");
+    }
 
-  const schemas = REVIEW_SCHEMAS[application.application_type];
-  const parsed = (mode === "draft" ? schemas.draft : schemas.submission).safeParse(payload);
-  if (!parsed.success) {
-    return fail("validation_failed", {
-      fieldErrors: toFieldErrors(parsed.error, 2),
-      formErrors: toFormErrors(parsed.error),
+    const schemas = REVIEW_SCHEMAS[application.application_type];
+    const parsed = (mode === "draft" ? schemas.draft : schemas.submission).safeParse(payload);
+    if (!parsed.success) {
+      return fail("validation_failed", {
+        fieldErrors: toFieldErrors(parsed.error, 2),
+        formErrors: toFormErrors(parsed.error),
+      });
+    }
+
+    // Drafts merge into the saved review (null clears a score); completion replaces the scores.
+    const scores =
+      mode === "draft"
+        ? compactRubricScores({ ...toStoredScores(existing?.rubric_scores), ...(parsed.data.scores ?? {}) })
+        : compactRubricScores(parsed.data.scores ?? {});
+    const notes = parsed.data.notes ?? existing?.notes ?? "";
+    const recommendation =
+      parsed.data.recommendation !== undefined ? parsed.data.recommendation : (existing?.recommendation ?? null);
+
+    const values = {
+      rubric_scores: scores as Json,
+      notes,
+      recommendation,
+      // The database replaces this with its own timestamp and keeps the first completion time.
+      completed_at: mode === "complete" ? new Date().toISOString() : null,
+    };
+
+    // Updates match updated_at, so a write that landed after the read above makes this one miss.
+    const saved = existing
+      ? await supabase
+          .from("reviews")
+          .update(values)
+          .eq("id", existing.id)
+          .eq("updated_at", existing.updated_at)
+          .select(REVIEW_SELECT)
+          .maybeSingle()
+      : await supabase
+          .from("reviews")
+          .insert({ application_id: applicationId, reviewer_id: viewer.userId, ...values })
+          .select(REVIEW_SELECT)
+          .maybeSingle();
+
+    if (saved.error) {
+      if (!existing && saved.error.code === "23505") {
+        continue; // Another request created the review first: reload to check ownership and merge.
+      }
+      return failFromDatabase(`${mode}Review:${existing ? "update" : "insert"}`, saved.error);
+    }
+    if (!saved.data) {
+      continue; // The review changed after it was read: reload and merge again.
+    }
+
+    const { data: updatedApplication, error: statusError } = await supabase
+      .from("applications")
+      .select("id, status, review_started_at")
+      .eq("id", applicationId)
+      .single();
+
+    if (statusError) {
+      return failFromDatabase(`${mode}Review:reload`, statusError);
+    }
+
+    revalidatePath(ROUTES.organizer, "layout");
+    revalidatePath(ROUTES.portal, "layout");
+
+    return ok({
+      review: toReviewRecord(saved.data, viewer.userId),
+      application: {
+        id: updatedApplication.id,
+        status: updatedApplication.status,
+        reviewStartedAt: updatedApplication.review_started_at,
+      },
     });
   }
 
-  // Drafts merge into the saved review (null clears a score); completion replaces the scores.
-  const scores =
-    mode === "draft"
-      ? compactRubricScores({ ...toStoredScores(existing?.rubric_scores), ...(parsed.data.scores ?? {}) })
-      : compactRubricScores(parsed.data.scores ?? {});
-  const notes = parsed.data.notes ?? existing?.notes ?? "";
-  const recommendation =
-    parsed.data.recommendation !== undefined ? parsed.data.recommendation : (existing?.recommendation ?? null);
-
-  const values = {
-    rubric_scores: scores as Json,
-    notes,
-    recommendation,
-    // The database replaces this with its own timestamp and keeps the first completion time.
-    completed_at: mode === "complete" ? new Date().toISOString() : null,
-  };
-
-  let reviewRow;
-  if (existing) {
-    const { data, error } = await supabase
-      .from("reviews")
-      .update(values)
-      .eq("id", existing.id)
-      .select(REVIEW_SELECT)
-      .maybeSingle();
-    if (error) {
-      return failFromDatabase(`${mode}Review:update`, error);
-    }
-    if (!data) {
-      return fail("review_owned_by_another_organizer");
-    }
-    reviewRow = data;
-  } else {
-    const { data, error } = await supabase
-      .from("reviews")
-      .insert({ application_id: applicationId, reviewer_id: viewer.userId, ...values })
-      .select(REVIEW_SELECT)
-      .single();
-    if (error) {
-      if (error.code === "23505") {
-        // Another request created the review first.
-        const { data: winner } = await supabase
-          .from("reviews")
-          .select("reviewer_id")
-          .eq("application_id", applicationId)
-          .maybeSingle();
-        return fail(winner && winner.reviewer_id !== viewer.userId ? "review_owned_by_another_organizer" : "conflict");
-      }
-      return failFromDatabase(`${mode}Review:insert`, error);
-    }
-    reviewRow = data;
-  }
-
-  const { data: updatedApplication, error: statusError } = await supabase
-    .from("applications")
-    .select("id, status, review_started_at")
-    .eq("id", applicationId)
-    .single();
-
-  if (statusError) {
-    return failFromDatabase(`${mode}Review:reload`, statusError);
-  }
-
-  revalidatePath(ROUTES.organizer, "layout");
-  revalidatePath(ROUTES.portal, "layout");
-
-  return ok({
-    review: toReviewRecord(reviewRow, viewer.userId),
-    application: {
-      id: updatedApplication.id,
-      status: updatedApplication.status,
-      reviewStartedAt: updatedApplication.review_started_at,
-    },
-  });
+  return fail("conflict");
 }
 
 /**

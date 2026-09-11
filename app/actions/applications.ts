@@ -23,6 +23,9 @@ import type { Json } from "@/types/database";
 
 const applicationTypeSchema = z.enum(APPLICATION_TYPES, { error: "Application type must be hacker or judge." });
 
+/** Read-merge-write attempts before a save that keeps losing races returns "conflict". */
+const MAX_WRITE_ATTEMPTS = 3;
+
 function revalidateApplicantRoutes() {
   revalidatePath(ROUTES.onboarding);
   revalidatePath(ROUTES.portal, "layout");
@@ -84,7 +87,8 @@ export async function createApplication(type?: ApplicationType): Promise<ActionR
 /**
  * Saves draft answers. The payload is a partial response object for the application's type:
  * provided keys are merged into the saved draft, null or blank values clear an answer, and
- * unknown keys are ignored. Only the owner's draft can be saved.
+ * unknown keys are ignored. Only the owner's draft can be saved. Overlapping saves are merged
+ * rather than overwriting each other.
  */
 export async function saveApplication(applicationId: string, payload: unknown): Promise<ActionResult<ApplicationData>> {
   const auth = await authorizeApplicantAction();
@@ -97,46 +101,51 @@ export async function saveApplication(applicationId: string, payload: unknown): 
     return fail("not_found");
   }
 
-  const current = await fetchApplicationRowById(supabase, applicationId);
-  if (current.error) {
-    return failFromDatabase("saveApplication:load", current.error);
-  }
-  if (!current.data || current.data.user_id !== viewer.userId) {
-    return fail("not_found");
-  }
-  if (current.data.status !== "draft") {
-    return fail("application_locked");
+  for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
+    const current = await fetchApplicationRowById(supabase, applicationId);
+    if (current.error) {
+      return failFromDatabase("saveApplication:load", current.error);
+    }
+    if (!current.data || current.data.user_id !== viewer.userId) {
+      return fail("not_found");
+    }
+    if (current.data.status !== "draft") {
+      return fail("application_locked");
+    }
+
+    const type = current.data.application_type;
+    const parsed = getApplicationDraftSchema(type).safeParse(payload);
+    if (!parsed.success) {
+      return fail("validation_failed", {
+        fieldErrors: toFieldErrors(parsed.error),
+        formErrors: toFormErrors(parsed.error),
+      });
+    }
+
+    const responses = mergeApplicationResponses(type, current.data.responses, parsed.data);
+    const completion = calculateApplicationCompletion(type, responses);
+
+    // Matching updated_at makes this write miss if another write landed after the read above.
+    const { data, error } = await supabase
+      .from("applications")
+      .update({ responses: responses as Json, completion_percent: completion.percent })
+      .eq("id", applicationId)
+      .eq("status", "draft")
+      .eq("updated_at", current.data.updated_at)
+      .select(APPLICATION_SELECT)
+      .maybeSingle();
+
+    if (error) {
+      return failFromDatabase("saveApplication:update", error);
+    }
+    if (data) {
+      revalidateApplicantRoutes();
+      return ok(toApplicantApplication(data));
+    }
+    // The row changed after it was read (another save or a submission): reload and merge again.
   }
 
-  const type = current.data.application_type;
-  const parsed = getApplicationDraftSchema(type).safeParse(payload);
-  if (!parsed.success) {
-    return fail("validation_failed", {
-      fieldErrors: toFieldErrors(parsed.error),
-      formErrors: toFormErrors(parsed.error),
-    });
-  }
-
-  const responses = mergeApplicationResponses(type, current.data.responses, parsed.data);
-  const completion = calculateApplicationCompletion(type, responses);
-
-  const { data, error } = await supabase
-    .from("applications")
-    .update({ responses: responses as Json, completion_percent: completion.percent })
-    .eq("id", applicationId)
-    .eq("status", "draft")
-    .select(APPLICATION_SELECT)
-    .maybeSingle();
-
-  if (error) {
-    return failFromDatabase("saveApplication:update", error);
-  }
-  if (!data) {
-    return fail("application_locked");
-  }
-
-  revalidateApplicantRoutes();
-  return ok(toApplicantApplication(data));
+  return fail("conflict");
 }
 
 /**
@@ -154,43 +163,48 @@ export async function submitApplication(applicationId: string): Promise<ActionRe
     return fail("not_found");
   }
 
-  const current = await fetchApplicationRowById(supabase, applicationId);
-  if (current.error) {
-    return failFromDatabase("submitApplication:load", current.error);
-  }
-  if (!current.data || current.data.user_id !== viewer.userId) {
-    return fail("not_found");
-  }
-  if (current.data.status !== "draft") {
-    return fail("application_locked");
+  for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
+    const current = await fetchApplicationRowById(supabase, applicationId);
+    if (current.error) {
+      return failFromDatabase("submitApplication:load", current.error);
+    }
+    if (!current.data || current.data.user_id !== viewer.userId) {
+      return fail("not_found");
+    }
+    if (current.data.status !== "draft") {
+      return fail("application_locked");
+    }
+
+    const submission = getApplicationSubmissionSchema(current.data.application_type).safeParse(current.data.responses);
+    if (!submission.success) {
+      return fail("application_incomplete", {
+        fieldErrors: toFieldErrors(submission.error),
+        formErrors: toFormErrors(submission.error),
+      });
+    }
+
+    // Matching updated_at guarantees the answers validated above are the ones submitted.
+    const { data, error } = await supabase
+      .from("applications")
+      .update({ responses: submission.data as Json, status: "submitted" })
+      .eq("id", applicationId)
+      .eq("status", "draft")
+      .eq("updated_at", current.data.updated_at)
+      .select(APPLICATION_SELECT)
+      .maybeSingle();
+
+    if (error) {
+      return failFromDatabase("submitApplication:update", error);
+    }
+    if (data) {
+      revalidateApplicantRoutes();
+      revalidateOrganizerRoutes();
+      return ok(toApplicantApplication(data));
+    }
+    // The row changed after it was read: reload and validate again.
   }
 
-  const submission = getApplicationSubmissionSchema(current.data.application_type).safeParse(current.data.responses);
-  if (!submission.success) {
-    return fail("application_incomplete", {
-      fieldErrors: toFieldErrors(submission.error),
-      formErrors: toFormErrors(submission.error),
-    });
-  }
-
-  const { data, error } = await supabase
-    .from("applications")
-    .update({ responses: submission.data as Json, status: "submitted" })
-    .eq("id", applicationId)
-    .eq("status", "draft")
-    .select(APPLICATION_SELECT)
-    .maybeSingle();
-
-  if (error) {
-    return failFromDatabase("submitApplication:update", error);
-  }
-  if (!data) {
-    return fail("application_locked");
-  }
-
-  revalidateApplicantRoutes();
-  revalidateOrganizerRoutes();
-  return ok(toApplicantApplication(data));
+  return fail("conflict");
 }
 
 /**

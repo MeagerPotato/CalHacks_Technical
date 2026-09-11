@@ -11,7 +11,11 @@ export type ApplicationSort = (typeof APPLICATION_SORTS)[number];
 export const DEFAULT_APPLICATION_SORT: ApplicationSort = "submitted_desc";
 export const DEFAULT_PAGE_SIZE = 25;
 export const MAX_PAGE_SIZE = 100;
+/** Highest page number; keeps (page - 1) * pageSize within the database's integer offset. */
+export const MAX_PAGE = Math.floor(2_147_483_647 / MAX_PAGE_SIZE);
 export const SEARCH_MAX_LENGTH = 100;
+/** PostgreSQL text cannot contain NUL, which a URL can carry as %00. */
+const NUL_CHARACTER = String.fromCharCode(0);
 
 export const applicationIdSchema = z.uuid({ error: "Invalid application id." });
 
@@ -20,12 +24,12 @@ export const applicationIdSchema = z.uuid({ error: "Invalid application id." });
  * query-string-backed filters never throw on a malformed URL.
  */
 export const applicationListFiltersSchema = z.object({
-  search: z.string().trim().max(SEARCH_MAX_LENGTH).optional().catch(undefined),
+  search: z.string().transform((value) => value.replaceAll(NUL_CHARACTER, "")).pipe(z.string().trim().max(SEARCH_MAX_LENGTH)).optional().catch(undefined),
   type: z.enum(APPLICATION_TYPES).optional().catch(undefined),
   status: z.enum(APPLICATION_STATUSES).optional().catch(undefined),
   reviewState: z.enum(REVIEW_STATE_FILTERS).optional().catch(undefined),
   sort: z.enum(APPLICATION_SORTS).catch(DEFAULT_APPLICATION_SORT),
-  page: z.coerce.number().int().min(1).catch(1),
+  page: z.coerce.number().int().min(1).max(MAX_PAGE).catch(1),
   pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).catch(DEFAULT_PAGE_SIZE),
 });
 

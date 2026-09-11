@@ -160,6 +160,27 @@ describe("saveApplication action", () => {
 
     expect(await storedApplication(id)).toMatchObject({ status: "draft", responses: { preferredName: "Owner" } });
   });
+
+  it("keeps every answer when saves overlap", async () => {
+    const hacker = await signUpTestUser({ label: "overlap", role: "hacker" });
+    actAs(hacker);
+    const { id } = expectOk(await createApplication());
+
+    const results = await Promise.all([
+      saveApplication(id, { preferredName: "Overlap" }),
+      saveApplication(id, { location: "Remote" }),
+      saveApplication(id, { major: "Mathematics" }),
+    ]);
+    for (const result of results) {
+      expectOk(result);
+    }
+
+    expect((await storedApplication(id))?.responses).toEqual({
+      preferredName: "Overlap",
+      location: "Remote",
+      major: "Mathematics",
+    });
+  });
 });
 
 // Completion gate 3: submitted applications are locked from applicant edits.
@@ -254,6 +275,37 @@ describe("submitApplication action", () => {
     // Submitting incomplete answers directly fails the database completeness constraint.
     const incomplete = await hacker.client.from("applications").update({ status: "submitted" }).eq("id", id).select("id");
     expect(incomplete.error?.code).toBe("23514");
+
+    // Answers the Server Actions would reject cannot be stored directly either.
+    const junkDraft = await hacker.client
+      .from("applications")
+      .update({ responses: { skills: ["web", "not-a-skill"], graduationYear: 1900, injectedKey: "x" } })
+      .eq("id", id)
+      .select("id");
+    expect(junkDraft.error?.code).toBe("23514");
+
+    // A draft may hold blank or unfinished answers, but submitting them is refused.
+    const unfinished = await hacker.client
+      .from("applications")
+      .update({ responses: { ...validHackerResponses, bio: "\t", links: ["javascript:alert(1)"] } })
+      .eq("id", id)
+      .select("id");
+    expect(unfinished.error).toBeNull();
+    const invalidSubmit = await hacker.client
+      .from("applications")
+      .update({ status: "submitted" })
+      .eq("id", id)
+      .select("id");
+    expect(invalidSubmit.error?.code).toBe("23514");
+
+    // One Judge cannot inflate Expertise Radar coverage with unknown or excess areas.
+    const judge = await signUpTestUser({ label: "radar", role: "judge" });
+    const radar = await judge.client.from("applications").insert({
+      user_id: judge.userId,
+      application_type: "judge",
+      responses: { ...validJudgeResponses, expertiseAreas: ["web", "fake_area"] },
+    });
+    expect(radar.error?.code).toBe("23514");
 
     // Applicants cannot move their own application into review or a decision.
     for (const status of ["in_review", "accepted", "waitlisted"] as const) {

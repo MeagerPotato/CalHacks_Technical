@@ -31,119 +31,268 @@ comment on type public.application_status is
   'draft -> submitted -> in_review -> accepted | waitlisted. There is no rejected state.';
 
 -- ---------------------------------------------------------------------------
--- Validation helpers used by CHECK constraints
+-- Response validation used by CHECK constraints
+--
+-- The database enforces the same response contract as the Zod schemas in
+-- lib/validation/application.ts, so requests that bypass the Next.js server (for
+-- example direct Data API calls) cannot store answers the app would reject.
+-- tests/integration/schema-drift.test.ts compares both implementations value by value.
 -- ---------------------------------------------------------------------------
 
--- Required response keys per application type and the minimal shape each must have.
--- This mirrors the required fields of the Zod schemas in lib/validation/application.ts;
--- tests/integration/schema-drift.test.ts fails if the two drift apart.
--- Kinds: text = non-blank string, integer = whole number >= 0,
---        list = non-empty array, accepted = JSON true.
-create function private.application_response_requirements(p_type public.application_type)
-returns table (field_key text, field_kind text)
+-- Removes the characters JavaScript's String.prototype.trim() removes, matching Zod's .trim().
+create function private.trim_js_whitespace(p_value text)
+returns text
 language sql
 immutable
 set search_path = ''
 as $$
-  select r.field_key, r.field_kind
+  select regexp_replace(
+    p_value,
+    '^[\x09-\x0d\x20\xa0\x1680\x2000-\x200a\x2028\x2029\x202f\x205f\x3000\xfeff]+|[\x09-\x0d\x20\xa0\x1680\x2000-\x200a\x2028\x2029\x202f\x205f\x3000\xfeff]+$',
+    '',
+    'g'
+  );
+$$;
+
+-- Submitted links must be http(s) URLs with a domain name and an optional port.
+-- lib/validation/application.ts (HTTP_LINK_PATTERN_SOURCE) uses the identical pattern.
+create function private.http_link_pattern()
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select '^https?://(?=[A-Za-z0-9.-]{1,253}(?:[:/?#]|$))(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^\x01-\x20\x7f]*)?$'::text;
+$$;
+
+-- Response fields per application type, mirroring the Zod schemas.
+-- Kinds, as required for a submitted application (drafts may omit any answer or set it to null):
+--   text      string; after trimming, non-empty when required and at most max_length characters
+--             (char_length counts Unicode code points, exactly as Zod 4 measures strings)
+--   integer   whole number from min_value to max_value
+--   choice    one of options
+--   choices   non-empty array of distinct options with at most max_items entries
+--   links     array of at most max_items links matching http_link_pattern, each at most max_length
+--   accepted  JSON true
+create function private.application_field_rules(p_type public.application_type)
+returns table (
+  field_key text,
+  field_kind text,
+  is_required boolean,
+  max_length integer,
+  min_value integer,
+  max_value integer,
+  max_items integer,
+  options text[]
+)
+language sql
+immutable
+set search_path = ''
+as $$
+  select
+    r.field_key,
+    r.field_kind,
+    r.is_required,
+    r.max_length::integer,
+    r.min_value::integer,
+    r.max_value::integer,
+    r.max_items::integer,
+    r.options::text[]
   from (
     values
-      ('hacker', 'preferredName', 'text'),
-      ('hacker', 'location', 'text'),
-      ('hacker', 'bio', 'text'),
-      ('hacker', 'school', 'text'),
-      ('hacker', 'major', 'text'),
-      ('hacker', 'graduationYear', 'integer'),
-      ('hacker', 'experienceLevel', 'text'),
-      ('hacker', 'skills', 'list'),
-      ('hacker', 'previousHackathonCount', 'integer'),
-      ('hacker', 'buildGoals', 'text'),
-      ('hacker', 'proudProject', 'text'),
-      ('hacker', 'codeOfConductAccepted', 'accepted'),
-      ('judge', 'preferredName', 'text'),
-      ('judge', 'location', 'text'),
-      ('judge', 'bio', 'text'),
-      ('judge', 'roleTitle', 'text'),
-      ('judge', 'yearsExperience', 'integer'),
-      ('judge', 'expertiseAreas', 'list'),
-      ('judge', 'judgingExperience', 'text'),
-      ('judge', 'availability', 'list'),
-      ('judge', 'preferredCategories', 'list'),
-      ('judge', 'evaluationApproach', 'text'),
-      ('judge', 'motivation', 'text'),
-      ('judge', 'codeOfConductAccepted', 'accepted')
-  ) as r (application_type, field_key, field_kind)
+      ('hacker', 'preferredName', 'text', true, 80, null, null, null, null),
+      ('hacker', 'location', 'text', true, 120, null, null, null, null),
+      ('hacker', 'bio', 'text', true, 600, null, null, null, null),
+      ('hacker', 'links', 'links', false, 300, null, null, 5, null),
+      ('hacker', 'school', 'text', true, 120, null, null, null, null),
+      ('hacker', 'major', 'text', true, 120, null, null, null, null),
+      ('hacker', 'graduationYear', 'integer', true, null, 2000, 2040, null, null),
+      ('hacker', 'experienceLevel', 'choice', true, null, null, null, null,
+        array['first_project', 'beginner', 'intermediate', 'advanced']),
+      ('hacker', 'skills', 'choices', true, null, null, null, 8,
+        array['web', 'mobile', 'ai_ml', 'data', 'hardware', 'design', 'game_dev', 'security', 'cloud', 'robotics',
+              'ar_vr', 'blockchain']),
+      ('hacker', 'previousHackathonCount', 'integer', true, null, 0, 100, null, null),
+      ('hacker', 'buildGoals', 'text', true, 1500, null, null, null, null),
+      ('hacker', 'proudProject', 'text', true, 1500, null, null, null, null),
+      ('hacker', 'codeOfConductAccepted', 'accepted', true, null, null, null, null, null),
+      ('judge', 'preferredName', 'text', true, 80, null, null, null, null),
+      ('judge', 'location', 'text', true, 120, null, null, null, null),
+      ('judge', 'bio', 'text', true, 600, null, null, null, null),
+      ('judge', 'links', 'links', false, 300, null, null, 5, null),
+      ('judge', 'company', 'text', false, 120, null, null, null, null),
+      ('judge', 'roleTitle', 'text', true, 120, null, null, null, null),
+      ('judge', 'yearsExperience', 'integer', true, null, 0, 60, null, null),
+      ('judge', 'expertiseAreas', 'choices', true, null, null, null, 6,
+        array['ai_ml', 'web', 'mobile', 'hardware', 'data', 'security', 'design_ux', 'developer_tools', 'health',
+              'climate', 'fintech', 'education']),
+      ('judge', 'judgingExperience', 'text', true, 1000, null, null, null, null),
+      ('judge', 'availability', 'choices', true, null, null, null, 6,
+        array['friday_evening', 'saturday_morning', 'saturday_afternoon', 'saturday_evening', 'sunday_morning',
+              'sunday_afternoon']),
+      ('judge', 'preferredCategories', 'choices', true, null, null, null, 5,
+        array['ai_ml', 'hardware', 'health', 'sustainability', 'education', 'fintech', 'social_impact',
+              'developer_tools', 'entertainment', 'beginner_friendly']),
+      ('judge', 'conflictsOfInterest', 'text', false, 1000, null, null, null, null),
+      ('judge', 'evaluationApproach', 'text', true, 1500, null, null, null, null),
+      ('judge', 'motivation', 'text', true, 1500, null, null, null, null),
+      ('judge', 'codeOfConductAccepted', 'accepted', true, null, null, null, null, null)
+  ) as r (application_type, field_key, field_kind, is_required, max_length, min_value, max_value, max_items, options)
   where r.application_type = p_type::text
   order by r.field_key;
 $$;
 
-comment on function private.application_response_requirements(public.application_type) is
-  'Required response keys per application type. Kept in sync with Zod by an integration drift test.';
+comment on function private.application_field_rules(public.application_type) is
+  'Response field rules per application type. Kept in sync with Zod by an integration drift test.';
 
--- Coarse database-side completeness guard for non-draft applications. The Server
--- Action performs full Zod validation first; this guard guarantees the rule still
--- holds for requests that bypass the Next.js server (for example direct Data API calls).
-create function private.application_responses_complete(p_type public.application_type, p_responses jsonb)
+-- True when responses satisfy the draft contract (p_submitted = false) or the complete
+-- submission contract (p_submitted = true). Unknown keys are always rejected; the Server
+-- Actions drop them before writing.
+create function private.application_responses_valid(
+  p_type public.application_type,
+  p_responses jsonb,
+  p_submitted boolean
+)
 returns boolean
 language plpgsql
 immutable
 set search_path = ''
 as $$
 declare
-  requirement record;
+  rule record;
   answer jsonb;
+  item jsonb;
+  item_count integer;
+  text_value text;
+  number_value numeric;
 begin
-  if p_type is null or p_responses is null or jsonb_typeof(p_responses) <> 'object' then
+  if p_type is null or p_submitted is null or p_responses is null or jsonb_typeof(p_responses) <> 'object' then
     return false;
   end if;
 
-  for requirement in
-    select req.field_key, req.field_kind
-    from private.application_response_requirements(p_type) as req
+  if exists (
+    select 1
+    from jsonb_object_keys(p_responses) as response_key
+    where not exists (
+      select 1
+      from private.application_field_rules(p_type) as known
+      where known.field_key = response_key
+    )
+  ) then
+    return false;
+  end if;
+
+  for rule in
+    select *
+    from private.application_field_rules(p_type)
   loop
-    answer := p_responses -> requirement.field_key;
+    answer := p_responses -> rule.field_key;
 
     if answer is null then
-      return false;
+      if p_submitted and rule.is_required then
+        return false;
+      end if;
+      continue;
     end if;
 
-    if requirement.field_kind = 'text' then
-      if jsonb_typeof(answer) <> 'string' then
+    -- Drafts use null for "no answer"; a submission omits optional answers instead.
+    if jsonb_typeof(answer) = 'null' then
+      if p_submitted then
         return false;
       end if;
-      if btrim(answer #>> '{}') = '' then
-        return false;
-      end if;
-    elsif requirement.field_kind = 'integer' then
-      if jsonb_typeof(answer) <> 'number' then
-        return false;
-      end if;
-      if (answer #>> '{}')::numeric < 0
-        or (answer #>> '{}')::numeric <> trunc((answer #>> '{}')::numeric) then
-        return false;
-      end if;
-    elsif requirement.field_kind = 'list' then
-      if jsonb_typeof(answer) <> 'array' then
-        return false;
-      end if;
-      if jsonb_array_length(answer) = 0 then
-        return false;
-      end if;
-    elsif requirement.field_kind = 'accepted' then
-      if answer <> 'true'::jsonb then
-        return false;
-      end if;
-    else
-      return false;
+      continue;
     end if;
+
+    case rule.field_kind
+      when 'text' then
+        if jsonb_typeof(answer) <> 'string' then
+          return false;
+        end if;
+        text_value := private.trim_js_whitespace(answer #>> '{}');
+        if char_length(text_value) > rule.max_length then
+          return false;
+        end if;
+        if p_submitted and rule.is_required and text_value = '' then
+          return false;
+        end if;
+
+      when 'integer' then
+        if jsonb_typeof(answer) <> 'number' then
+          return false;
+        end if;
+        number_value := (answer #>> '{}')::numeric;
+        if number_value <> trunc(number_value)
+          or number_value < rule.min_value
+          or number_value > rule.max_value then
+          return false;
+        end if;
+
+      when 'choice' then
+        if jsonb_typeof(answer) <> 'string' or not ((answer #>> '{}') = any (rule.options)) then
+          return false;
+        end if;
+
+      when 'choices' then
+        if jsonb_typeof(answer) <> 'array' then
+          return false;
+        end if;
+        item_count := jsonb_array_length(answer);
+        if item_count > rule.max_items or (p_submitted and item_count = 0) then
+          return false;
+        end if;
+        if exists (
+          select 1
+          from jsonb_array_elements(answer) as element (value)
+          where jsonb_typeof(element.value) <> 'string'
+            or not ((element.value #>> '{}') = any (rule.options))
+        ) then
+          return false;
+        end if;
+        if (select count(distinct element.value) from jsonb_array_elements(answer) as element (value)) <> item_count then
+          return false;
+        end if;
+
+      when 'links' then
+        if jsonb_typeof(answer) <> 'array' or jsonb_array_length(answer) > rule.max_items then
+          return false;
+        end if;
+        for item in
+          select element.value
+          from jsonb_array_elements(answer) as element (value)
+        loop
+          if jsonb_typeof(item) <> 'string' then
+            return false;
+          end if;
+          if p_submitted then
+            if char_length(item #>> '{}') > rule.max_length
+              or (item #>> '{}') !~ private.http_link_pattern() then
+              return false;
+            end if;
+          elsif char_length(private.trim_js_whitespace(item #>> '{}')) > rule.max_length then
+            return false;
+          end if;
+        end loop;
+
+      when 'accepted' then
+        if p_submitted then
+          if answer <> 'true'::jsonb then
+            return false;
+          end if;
+        elsif jsonb_typeof(answer) <> 'boolean' then
+          return false;
+        end if;
+
+      else
+        return false;
+    end case;
   end loop;
 
   return true;
 end;
 $$;
 
-comment on function private.application_responses_complete(public.application_type, jsonb) is
-  'True when every required response key is present with the expected JSON shape.';
+comment on function private.application_responses_valid(public.application_type, jsonb, boolean) is
+  'True when responses satisfy the draft (p_submitted = false) or submission (true) contract of lib/validation/application.ts.';
 
 -- Rubric dimension keys per application type. Mirrors lib/validation/review.ts.
 create function private.rubric_dimensions(p_type public.application_type)
@@ -229,9 +378,13 @@ create table public.applications (
     (review_started_at is null or review_started_at >= launched_at)
     and (decision_released_at is null or decision_released_at >= review_started_at)
   ),
+  constraint applications_draft_responses_valid check (
+    status <> 'draft'
+    or private.application_responses_valid(application_type, responses, false)
+  ),
   constraint applications_submitted_responses_complete check (
     status = 'draft'
-    or (completion_percent = 100 and private.application_responses_complete(application_type, responses))
+    or (completion_percent = 100 and private.application_responses_valid(application_type, responses, true))
   )
 );
 
@@ -239,6 +392,8 @@ comment on table public.applications is
   'Exactly one application per Hacker or Judge account. Responses are role-specific JSONB; workflow metadata is relational.';
 comment on column public.applications.reference_number is
   'Stable non-identifying number for blind review labels such as H-1042.';
+comment on column public.applications.responses is
+  'Role-specific answers. CHECK constraints enforce the draft or submission contract of lib/validation/application.ts.';
 comment on column public.applications.completion_percent is
   'Convenience value computed from the Zod schema by the server. Always 100 once submitted.';
 comment on column public.applications.launched_at is 'Set by the database when a valid draft is submitted.';
@@ -313,7 +468,9 @@ alter table public.reviews enable row level security;
 
 revoke all on table public.profiles, public.applications, public.reviews from anon, authenticated;
 
-revoke all on function private.application_response_requirements(public.application_type) from public;
-revoke all on function private.application_responses_complete(public.application_type, jsonb) from public;
+revoke all on function private.trim_js_whitespace(text) from public;
+revoke all on function private.http_link_pattern() from public;
+revoke all on function private.application_field_rules(public.application_type) from public;
+revoke all on function private.application_responses_valid(public.application_type, jsonb, boolean) from public;
 revoke all on function private.rubric_dimensions(public.application_type) from public;
 revoke all on function private.set_updated_at() from public;

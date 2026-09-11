@@ -4,7 +4,7 @@
 -- Loaded by `supabase db reset` after migrations, executed as postgres.
 -- Every account created here has an EMPTY password and cannot sign in.
 -- Create the organizer login and any demo applicant logins privately
--- (see docs/infrastructure/ACCOUNTS.md). Never commit credentials.
+-- (see docs/infrastructure/environment-and-deployment.md). Never commit credentials.
 --
 -- Contents: 13 applications (7 Hacker, 6 Judge) across every status, 3 completed
 -- reviews written by a non-loginable seed organizer, and varied Judge expertise tags
@@ -73,7 +73,7 @@ select private.promote_to_organizer('seed.reviewer@example.com');
 -- ---------------------------------------------------------------------------
 -- Applications
 -- Draft completion_percent values match lib/validation completion rules
--- (verified by tests/integration/seed-consistency.test.ts).
+-- (verified by tests/integration/schema-drift.test.ts).
 -- ---------------------------------------------------------------------------
 
 insert into public.applications (

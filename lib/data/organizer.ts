@@ -70,20 +70,30 @@ export async function fetchApplicationList(
   input: ApplicationListFilters | ApplicationListFiltersInput = {},
 ): Promise<ApplicationListPage> {
   const filters = parseApplicationListFilters(input);
-
-  const { data, error } = await supabase.rpc("list_review_applications", {
+  const filterArgs = {
     p_search: filters.search,
     p_application_type: filters.type,
     p_status: filters.status,
     p_review_state: filters.reviewState,
     p_sort: filters.sort,
+  };
+
+  const { data, error } = await supabase.rpc("list_review_applications", {
+    ...filterArgs,
     p_limit: filters.pageSize,
     p_offset: (filters.page - 1) * filters.pageSize,
   });
   if (error) throw toDataAccessError("fetchApplicationList", error);
 
   const rows = (data ?? []) as ApplicationListRow[];
-  const total = rows[0]?.total_count ?? 0;
+  let total = rows[0]?.total_count ?? 0;
+
+  // total_count is carried on each returned row, so a page past the end needs its own count.
+  if (rows.length === 0 && filters.page > 1) {
+    const count = await supabase.rpc("list_review_applications", { ...filterArgs, p_limit: 1, p_offset: 0 });
+    if (count.error) throw toDataAccessError("fetchApplicationList:count", count.error);
+    total = count.data?.[0]?.total_count ?? 0;
+  }
 
   return {
     items: rows.map(toApplicationListItem),

@@ -118,6 +118,8 @@ create trigger profiles_guard_write
 
 -- Admin-only organizer promotion. Run as postgres from the SQL editor, psql, or a
 -- trusted script. Not exposed through the Data API and not executable by client roles.
+-- Promote only an account the admin just created: with email confirmation disabled,
+-- anyone can register any address, so a pre-existing account proves nothing.
 create function private.promote_to_organizer(p_email text)
 returns uuid
 language plpgsql

@@ -120,13 +120,19 @@ begin
   ) as tag (value)
   where a.application_type = 'judge'
     and a.status <> 'draft'
+    -- Only the known areas are counted, so the result has at most one row per area.
+    and tag.value in (
+      select unnest(rule.options)
+      from private.application_field_rules('judge') as rule
+      where rule.field_key = 'expertiseAreas'
+    )
   group by tag.value
   order by judge_count desc, expertise;
 end;
 $$;
 
 comment on function public.get_judge_expertise_counts() is
-  'Organizer-only counts of expertise tags across non-draft Judge applications. Tags with zero judges are omitted.';
+  'Organizer-only counts of known expertise areas across non-draft Judge applications. Areas with zero judges are omitted.';
 
 -- ---------------------------------------------------------------------------
 -- Filtered, searchable, sortable application list
@@ -306,7 +312,8 @@ comment on function public.get_next_unreviewed_application_id(uuid) is
   'Organizer-only: id of the next application needing review (oldest first), optionally after a given application. Null when the queue is empty.';
 
 -- ---------------------------------------------------------------------------
--- Execute privileges: authenticated only (functions refuse non-organizers).
+-- Execute privileges: revoked from PUBLIC and anon, granted to authenticated.
+-- service_role keeps Supabase's default EXECUTE; every call still refuses non-organizers.
 -- ---------------------------------------------------------------------------
 
 revoke all on function public.get_organizer_overview() from public, anon;

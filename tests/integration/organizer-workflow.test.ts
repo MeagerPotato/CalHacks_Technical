@@ -100,6 +100,17 @@ describe("organizer application list and dashboard", () => {
     expect(page).toMatchObject({ total: 4, page: 2, pageSize: 3, pageCount: 2 });
     expect(page.items).toHaveLength(1);
 
+    // A page past the end still reports the real total so the UI can offer a way back.
+    expect(await listApplications({ search: token, pageSize: 3, page: 5 })).toMatchObject({
+      items: [],
+      total: 4,
+      page: 5,
+      pageCount: 2,
+    });
+
+    // A NUL character (%00 in a URL) is removed instead of making the query fail.
+    expect((await listApplications({ search: `${token}${String.fromCharCode(0)}` })).total).toBe(4);
+
     const item = all.items.find((entry) => entry.id === hackerAppId);
     expect(item).toMatchObject({
       type: "hacker",
@@ -322,6 +333,27 @@ describe("review and decision workflow", () => {
     // Any organizer may release the official decision once the review is complete.
     actAs(otherOrganizer);
     expect(expectOk(await updateApplicationStatus(judgeAppId, "waitlisted")).status).toBe("waitlisted");
+  });
+
+  it("keeps every change when review saves overlap", async () => {
+    const applicant = await signUpTestUser({ label: "overlap-review", role: "hacker" });
+    const applicationId = await createApplicationAs(applicant, "hacker", validHackerResponses, { submit: true });
+
+    actAs(organizer);
+    const results = await Promise.all([
+      saveReview(applicationId, { scores: { motivation: 4 } }),
+      saveReview(applicationId, { scores: { initiative: 3 } }),
+      saveReview(applicationId, { notes: "Overlapping saves" }),
+    ]);
+    for (const result of results) {
+      expectOk(result);
+    }
+
+    const [review] = await queryRows<{ rubric_scores: Record<string, number>; notes: string }>(
+      "select rubric_scores, notes from public.reviews where application_id = $1",
+      [applicationId],
+    );
+    expect(review).toEqual({ rubric_scores: { motivation: 4, initiative: 3 }, notes: "Overlapping saves" });
   });
 });
 

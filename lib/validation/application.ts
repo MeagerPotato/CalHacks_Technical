@@ -6,10 +6,11 @@ import type { ApplicationType } from "@/lib/domain/enums";
 // Hacker and Judge application contracts.
 //
 // - Submission schemas define a complete, valid application. They are enforced by
-//   submitApplication and mirrored (required keys only) by the database CHECK
-//   constraint private.application_responses_complete.
+//   submitApplication and mirrored by the database function
+//   private.application_responses_valid (tests/integration/schema-drift.test.ts).
 // - Draft schemas accept partial answers but still enforce types, option values,
-//   and size limits so drafts can never store malformed data.
+//   and size limits. The same database function checks drafts, so malformed data
+//   cannot be stored even through direct Data API writes.
 // - APPLICATION_SECTIONS groups fields for completion and Launch Readiness.
 // Field labels and option labels live in lib/application-config.ts.
 // =============================================================================
@@ -94,6 +95,13 @@ export const APPLICATION_LIMITS = {
   yearsExperience: { min: 0, max: 60 },
 } as const;
 
+/**
+ * Submitted links must be http(s) URLs with a domain name and an optional port. The database
+ * uses the identical pattern (private.http_link_pattern), so both accept exactly the same links.
+ */
+export const HTTP_LINK_PATTERN_SOURCE = String.raw`^https?://(?=[A-Za-z0-9.-]{1,253}(?:[:/?#]|$))(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^\x01-\x20\x7f]*)?$`;
+export const HTTP_LINK_PATTERN = new RegExp(HTTP_LINK_PATTERN_SOURCE);
+
 // ---------------------------------------------------------------------------
 // Field builders
 // ---------------------------------------------------------------------------
@@ -138,13 +146,20 @@ const multiChoice = <const T extends readonly [string, ...string[]]>(values: T, 
     .max(maxItems, { error: `Choose up to ${maxItems} options.` })
     .refine(hasNoDuplicates, { error: DUPLICATE_MESSAGE });
 
+const LINK_MESSAGE = "Enter a full link starting with http:// or https://.";
+
+const httpLink = z
+  .string({ error: LINK_MESSAGE })
+  .max(APPLICATION_LIMITS.url, { error: tooLong(APPLICATION_LIMITS.url) })
+  .regex(HTTP_LINK_PATTERN, { error: LINK_MESSAGE });
+
+/** True for a link that passes submission validation (draft links can be any text). */
+export function isHttpLink(value: unknown): value is string {
+  return httpLink.safeParse(value).success;
+}
+
 const linkList = z
-  .array(
-    z
-      .httpUrl({ error: "Enter a full link starting with http:// or https://." })
-      .max(APPLICATION_LIMITS.url, { error: tooLong(APPLICATION_LIMITS.url) }),
-    { error: "Links must be a list." },
-  )
+  .array(httpLink, { error: "Links must be a list." })
   .max(APPLICATION_LIMITS.links, { error: `Add up to ${APPLICATION_LIMITS.links} links.` })
   .optional();
 

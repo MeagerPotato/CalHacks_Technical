@@ -18,8 +18,10 @@ grant usage on schema private to authenticated, service_role;
 grant execute on function private.is_organizer() to authenticated, service_role;
 grant execute on function private.current_account_role() to authenticated, service_role;
 -- Called from CHECK constraints and guard triggers, which run as the writing role.
-grant execute on function private.application_response_requirements(public.application_type) to authenticated, service_role;
-grant execute on function private.application_responses_complete(public.application_type, jsonb) to authenticated, service_role;
+grant execute on function private.trim_js_whitespace(text) to authenticated, service_role;
+grant execute on function private.http_link_pattern() to authenticated, service_role;
+grant execute on function private.application_field_rules(public.application_type) to authenticated, service_role;
+grant execute on function private.application_responses_valid(public.application_type, jsonb, boolean) to authenticated, service_role;
 grant execute on function private.rubric_dimensions(public.application_type) to authenticated, service_role;
 
 -- ---------------------------------------------------------------------------

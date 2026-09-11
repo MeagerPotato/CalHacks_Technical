@@ -7,57 +7,245 @@ import {
   RECOMMENDATIONS,
   type ApplicationType,
 } from "@/lib/domain/enums";
-import { getApplicationSubmissionSchema, getRequiredApplicationFieldKeys } from "@/lib/validation/application";
+import {
+  EXPERIENCE_LEVELS,
+  HACKER_SKILLS,
+  HTTP_LINK_PATTERN_SOURCE,
+  JUDGE_AVAILABILITY_BLOCKS,
+  JUDGE_EXPERTISE_AREAS,
+  PROJECT_CATEGORIES,
+  getApplicationDraftSchema,
+  getApplicationFieldKeys,
+  getApplicationSubmissionSchema,
+  isRequiredApplicationField,
+} from "@/lib/validation/application";
 import { calculateApplicationCompletion } from "@/lib/validation/completion";
 import { RUBRIC_DIMENSIONS, calculateOverallScore } from "@/lib/validation/review";
 
 import { validHackerResponses, validJudgeResponses } from "../fixtures/applications";
-import { queryRows, withDatabase } from "./helpers";
+import { queryRows } from "./helpers";
 
 const FIXTURES: Record<ApplicationType, Record<string, unknown>> = {
   hacker: validHackerResponses,
   judge: validJudgeResponses,
 };
 
-/** A value of the same JSON shape that fails both the SQL guard and Zod. */
-function invalidVariant(value: unknown): unknown {
-  if (typeof value === "string") return "   ";
-  if (typeof value === "number") return -1;
-  if (typeof value === "boolean") return false;
-  if (Array.isArray(value)) return [];
-  return null;
+interface FieldRule {
+  field_key: string;
+  field_kind: "text" | "integer" | "choice" | "choices" | "links" | "accepted";
+  is_required: boolean;
+  max_length: number | null;
+  min_value: number | null;
+  max_value: number | null;
+  max_items: number | null;
+  options: string[] | null;
 }
 
+function fieldRules(type: ApplicationType): Promise<FieldRule[]> {
+  return queryRows<FieldRule>("select * from private.application_field_rules($1::public.application_type)", [type]);
+}
+
+// Special characters are built from code points so this file stays plain ASCII.
+const EMOJI = String.fromCodePoint(0x1f600);
+/** Characters JavaScript's trim() removes (U+2000-U+200A is sampled at both ends and the middle). */
+const TRIMMED_WHITESPACE = String.fromCharCode(
+  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x20, 0xa0, 0x1680, 0x2000, 0x2005, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000,
+  0xfeff,
+);
+/** Characters that look blank but trim() keeps. */
+const UNTRIMMED_BLANKS = [0x85, 0x180e, 0x200b].map((code) => String.fromCharCode(code));
+
+const LINKS = [
+  "https://example.com",
+  "http://example.com/path?query=1#section",
+  "https://sub.example.co.uk/a/b",
+  "https://EXAMPLE.com",
+  "https://example.com:8080/x",
+  "https://example.com:65535",
+  "https://example.com:65536",
+  "https://example.com:0",
+  "https://example.com:080",
+  "https://localhost",
+  "https://localhost:3000",
+  "http://192.168.0.1",
+  "javascript:alert(1)",
+  "data:text/html,hi",
+  "ftp://example.com",
+  "https://user@example.com",
+  "https://example.com@evil.example",
+  "https://exa mple.com",
+  "https://example.com/a b",
+  `https://example.com/${String.fromCharCode(0x7f)}`,
+  `https://example.com/caf${String.fromCharCode(0xe9)}`,
+  " https://example.com",
+  "https://example.com ",
+  "https://example.com.",
+  "https://-example.com",
+  "https://example-.com",
+  "https://example.c",
+  `https://example.${"a".repeat(63)}`,
+  `https://example.${"a".repeat(64)}`,
+  "http:example.com",
+  "https://",
+  `https://${"a".repeat(63)}.com`,
+  `https://${"a".repeat(64)}.com`,
+  `https://${"abcdefghi.".repeat(25)}com`, // 253-character host
+  `https://${"abcdefghi.".repeat(25)}comx`, // 254-character host
+  `https://example.com/${"p".repeat(280)}`, // 300 characters
+  `https://example.com/${"p".repeat(281)}`, // 301 characters
+  `https://example.com/${EMOJI.repeat(280)}`, // 300 code points, 580 UTF-16 units
+  `https://example.com/${EMOJI.repeat(281)}`, // 301 code points
+];
+
+function textVariants(max: number): unknown[] {
+  return [
+    "Answer",
+    "",
+    TRIMMED_WHITESPACE,
+    `${TRIMMED_WHITESPACE}Answer${TRIMMED_WHITESPACE}`,
+    ...UNTRIMMED_BLANKS,
+    "x".repeat(max),
+    "x".repeat(max + 1),
+    `${TRIMMED_WHITESPACE}${"x".repeat(max)}${TRIMMED_WHITESPACE}`,
+    // Zod and char_length both count code points, so an emoji counts once.
+    EMOJI.repeat(max),
+    EMOJI.repeat(max + 1),
+    `${"x".repeat(max - 1)}${EMOJI}`,
+    `${"x".repeat(max)}${EMOJI}`,
+    String.fromCharCode(0xe9).repeat(max),
+    42,
+    true,
+    null,
+    ["Answer"],
+    { text: "Answer" },
+  ];
+}
+
+function integerVariants(min: number, max: number): unknown[] {
+  return [min, max, min - 1, max + 1, min + 0.5, String(min), null, true, [min], 1e300];
+}
+
+function choiceVariants(options: string[]): unknown[] {
+  return [...options, "not_an_option", options[0].toUpperCase(), "", null, 1, [options[0]]];
+}
+
+function choicesVariants(options: string[], maxItems: number): unknown[] {
+  return [
+    ...options.map((option) => [option]),
+    options.slice(0, maxItems),
+    options.length > maxItems ? options.slice(0, maxItems + 1) : [...options, options[0]],
+    [],
+    [options[0], options[0]],
+    ["not_an_option"],
+    [options[0], 1],
+    [options[0], null],
+    options[0],
+    null,
+  ];
+}
+
+function linksVariants(maxItems: number): unknown[] {
+  return [
+    [],
+    ...LINKS.map((link) => [link]),
+    Array.from({ length: maxItems }, (_, index) => `https://example.com/${index}`),
+    Array.from({ length: maxItems + 1 }, (_, index) => `https://example.com/${index}`),
+    [EMOJI.repeat(300)],
+    [EMOJI.repeat(301)],
+    [`  ${"x".repeat(300)}  `],
+    [1],
+    [null],
+    "https://example.com",
+    null,
+  ];
+}
+
+function variantsFor(rule: FieldRule): unknown[] {
+  switch (rule.field_kind) {
+    case "text":
+      return textVariants(rule.max_length ?? 0);
+    case "integer":
+      return integerVariants(rule.min_value ?? 0, rule.max_value ?? 0);
+    case "choice":
+      return choiceVariants(rule.options ?? []);
+    case "choices":
+      return choicesVariants(rule.options ?? [], rule.max_items ?? 0);
+    case "links":
+      return linksVariants(rule.max_items ?? 0);
+    case "accepted":
+      return [true, false, "true", 1, null, [true]];
+  }
+}
+
+// The parity checks below build choice variants from the SQL options, so an option added
+// only in TypeScript would go unnoticed without this exact comparison.
+const OPTION_LISTS: Record<string, readonly string[]> = {
+  experienceLevel: EXPERIENCE_LEVELS,
+  skills: HACKER_SKILLS,
+  expertiseAreas: JUDGE_EXPERTISE_AREAS,
+  availability: JUDGE_AVAILABILITY_BLOCKS,
+  preferredCategories: PROJECT_CATEGORIES,
+};
+
 describe("SQL and TypeScript contracts stay in sync", () => {
-  it.each(APPLICATION_TYPES)("required %s response keys match the Zod submission schema", async (type) => {
-    const rows = await queryRows<{ field_key: string }>(
-      "select field_key from private.application_response_requirements($1::public.application_type)",
-      [type],
-    );
-    expect(rows.map((row) => row.field_key).sort()).toEqual(getRequiredApplicationFieldKeys(type).sort());
+  it.each(APPLICATION_TYPES)("%s response fields, required keys, and options match TypeScript", async (type) => {
+    const rules = await fieldRules(type);
+    expect(rules.map((rule) => rule.field_key).sort()).toEqual(getApplicationFieldKeys(type).sort());
+    for (const rule of rules) {
+      expect(rule.is_required, rule.field_key).toBe(isRequiredApplicationField(type, rule.field_key));
+      const options = OPTION_LISTS[rule.field_key];
+      expect(rule.options, `${rule.field_key} options`).toEqual(options ? [...options] : null);
+    }
   });
 
-  it.each(APPLICATION_TYPES)("the database completeness guard agrees with Zod for %s applications", async (type) => {
-    const fixture = FIXTURES[type];
-    const cases: Array<{ label: string; responses: Record<string, unknown> }> = [{ label: "complete", responses: fixture }];
+  it("uses the same link pattern in SQL and TypeScript", async () => {
+    const [row] = await queryRows<{ pattern: string }>("select private.http_link_pattern() as pattern");
+    expect(row.pattern).toBe(HTTP_LINK_PATTERN_SOURCE);
+  });
 
-    for (const key of getRequiredApplicationFieldKeys(type)) {
+  it.each(APPLICATION_TYPES)("the database accepts exactly the %s responses Zod accepts", async (type) => {
+    const fixture = FIXTURES[type];
+    const cases: Array<{ label: string; responses: Record<string, unknown> }> = [
+      { label: "complete fixture", responses: fixture },
+      { label: "empty object", responses: {} },
+    ];
+
+    for (const rule of await fieldRules(type)) {
       const missing = { ...fixture };
-      delete missing[key];
-      cases.push({ label: `missing ${key}`, responses: missing });
-      cases.push({ label: `invalid ${key}`, responses: { ...fixture, [key]: invalidVariant(fixture[key]) } });
+      delete missing[rule.field_key];
+      cases.push({ label: `${rule.field_key} missing`, responses: missing });
+      variantsFor(rule).forEach((value, index) => {
+        cases.push({
+          label: `${rule.field_key} #${index} ${JSON.stringify(value).slice(0, 60)}`,
+          responses: { ...fixture, [rule.field_key]: value },
+        });
+      });
     }
 
-    await withDatabase(async (db) => {
-      for (const { label, responses } of cases) {
-        const { rows } = await db.query<{ complete: boolean }>(
-          "select private.application_responses_complete($1::public.application_type, $2::jsonb) as complete",
-          [type, JSON.stringify(responses)],
-        );
-        const zodComplete = getApplicationSubmissionSchema(type).safeParse(responses).success;
-        expect(rows[0].complete, label).toBe(zodComplete);
-      }
-    });
+    for (const submitted of [false, true]) {
+      const rows = await queryRows<{ index: number; valid: boolean }>(
+        `select (c.ordinality - 1)::int as index,
+                private.application_responses_valid($1::public.application_type, c.value, $2) as valid
+         from jsonb_array_elements($3::jsonb) with ordinality as c (value, ordinality)`,
+        [type, submitted, JSON.stringify(cases.map((entry) => entry.responses))],
+      );
+      expect(rows).toHaveLength(cases.length);
+
+      const schema = submitted ? getApplicationSubmissionSchema(type) : getApplicationDraftSchema(type);
+      const mismatches = rows
+        .filter((row) => row.valid !== schema.safeParse(cases[row.index].responses).success)
+        .map((row) => `${submitted ? "submission" : "draft"} ${cases[row.index].label}: database says ${row.valid}`);
+      expect(mismatches).toEqual([]);
+    }
+  });
+
+  it.each(APPLICATION_TYPES)("the database rejects unknown %s response keys that Zod strips", async (type) => {
+    const [row] = await queryRows<{ draft: boolean; submitted: boolean }>(
+      `select private.application_responses_valid($1::public.application_type, $2::jsonb, false) as draft,
+              private.application_responses_valid($1::public.application_type, $2::jsonb, true) as submitted`,
+      [type, JSON.stringify({ ...FIXTURES[type], injectedKey: "stored anyway" })],
+    );
+    expect(row).toEqual({ draft: false, submitted: false });
   });
 
   it.each(APPLICATION_TYPES)("%s rubric dimensions match", async (type) => {
@@ -222,11 +410,13 @@ describe("database security posture", () => {
     expect(rows.map((row) => row.name).sort()).toEqual(
       [
         // Called from RLS policies, CHECK constraints, and guard triggers.
-        "private.application_response_requirements",
-        "private.application_responses_complete",
+        "private.application_field_rules",
+        "private.application_responses_valid",
         "private.current_account_role",
+        "private.http_link_pattern",
         "private.is_organizer",
         "private.rubric_dimensions",
+        "private.trim_js_whitespace",
         // Organizer read RPCs; each refuses non-organizers itself.
         "public.get_application_status_breakdown",
         "public.get_judge_expertise_counts",

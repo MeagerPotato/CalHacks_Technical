@@ -5,6 +5,7 @@ import {
   getRequiredApplicationFieldKeys,
   hackerApplicationDraftSchema,
   hackerApplicationSchema,
+  isHttpLink,
   judgeApplicationDraftSchema,
   judgeApplicationSchema,
   mergeApplicationResponses,
@@ -60,12 +61,22 @@ describe("hacker submission schema", () => {
     ).toBe(false);
   });
 
-  it("only accepts http and https links", () => {
+  it("only accepts http and https links with a domain name", () => {
     const withLinks = (links: string[]) => hackerApplicationSchema.safeParse({ ...validHackerResponses, links });
     expect(withLinks(["https://example.com/me"]).success).toBe(true);
+    expect(withLinks(["http://example.com:8080/path?x=1#top"]).success).toBe(true);
     expect(withLinks(["javascript:alert(1)"]).success).toBe(false);
     expect(withLinks(["ftp://example.com/file"]).success).toBe(false);
+    expect(withLinks(["https://localhost:3000"]).success).toBe(false);
+    expect(withLinks(["https://example.com/a b"]).success).toBe(false);
     expect(withLinks(Array.from({ length: 6 }, (_, i) => `https://example.com/${i}`)).success).toBe(false);
+  });
+
+  it("exposes the submission link rule for safely rendering stored links", () => {
+    expect(isHttpLink("https://example.com")).toBe(true);
+    expect(isHttpLink("javascript:alert(1)")).toBe(false);
+    expect(isHttpLink(`https://example.com/${"p".repeat(300)}`)).toBe(false);
+    expect(isHttpLink(42)).toBe(false);
   });
 
   it("rejects non-integer, string, and out-of-range numbers", () => {

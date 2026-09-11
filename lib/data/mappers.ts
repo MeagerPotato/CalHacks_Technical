@@ -10,7 +10,7 @@ import type {
   ReviewQueueProgress,
   ReviewRecord,
 } from "@/lib/data/types";
-import { parseStoredResponses } from "@/lib/validation/application";
+import { isHttpLink, parseStoredResponses } from "@/lib/validation/application";
 import { calculateApplicationCompletion } from "@/lib/validation/completion";
 import type { Database } from "@/types/database";
 
@@ -153,7 +153,8 @@ export function toApplicantIdentity(
     email: profile?.email ?? "",
     preferredName: typeof preferredName === "string" ? preferredName : null,
     affiliation: typeof affiliation === "string" && affiliation.length > 0 ? affiliation : null,
-    links: Array.isArray(links) ? links.filter((link): link is string => typeof link === "string") : [],
+    // Draft links can be any text, so only links that are safe to render as hrefs are returned.
+    links: Array.isArray(links) ? links.filter(isHttpLink) : [],
   };
 }
 

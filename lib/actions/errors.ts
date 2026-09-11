@@ -61,6 +61,7 @@ export function failFromDatabase(context: string, error: DatabaseErrorLike): Act
     case "23502": // not_null_violation
     case "23514": // check_violation
     case "22P02": // invalid_text_representation (e.g. bad uuid)
+    case "22P05": // untranslatable_character (e.g. a NUL character in JSON text)
     case "22023": // invalid_parameter_value
       return fail("validation_failed");
     case "23503": // foreign_key_violation
