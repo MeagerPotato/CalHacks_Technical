@@ -31,8 +31,8 @@ export interface LandingViewProps {
 }
 
 /**
- * The public landing page (PROJECT_PLAN.md section 14): a compact nav, the hero, the portal card with the Apply now
- * and Sign in links, the mission timeline, the countdowns, and the Assemble, Launch, and Explore promise cards.
+ * The public landing page (PROJECT_PLAN.md section 14): a compact nav, the hero, the mission timeline, the portal
+ * card with the Apply now and Sign in links, the countdowns, and the Assemble, Launch, and Explore promise cards.
  */
 export function LandingView({ countdowns, timeline }: LandingViewProps) {
   return (
@@ -69,6 +69,8 @@ export function LandingView({ countdowns, timeline }: LandingViewProps) {
           <HeroArt />
         </div>
 
+        <MissionTimeline view={timeline} />
+
         <div className="grid items-center gap-8 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <Card labelledBy={PORTAL_CARD_TITLE_ID} data-testid="landing-portal-card">
             <div className="flex flex-col gap-4">
@@ -90,8 +92,6 @@ export function LandingView({ countdowns, timeline }: LandingViewProps) {
             <EngineerArt variant="landing" />
           </div>
         </div>
-
-        <MissionTimeline view={timeline} />
 
         {countdowns}
 

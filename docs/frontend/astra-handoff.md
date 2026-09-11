@@ -67,7 +67,7 @@ Shipped on 2026-09-11:
 3. **Mission clock.** The gold dot in `CountdownPanel` shows only from `sm`.
 4. **Copy.** The timeline states, `COPY.schedule.timeline.toBeAnnounced`, and both countdown captions now say plainly what they mean. The captions end with a colon because `Timestamp` prints the date right after them.
 
-Changes the user asked for after the pass, on the same day: the mission clock moved to sit between the flight plan and the promise cards, the countdown panel lost its pause toggle, and an upcoming stop that is not the current one shows no state badge.
+Changes the user asked for after the pass, on the same day: the landing page now runs hero, flight plan, portal card, mission clock, promise cards; the countdown panel lost its pause toggle; and an upcoming stop that is not the current one shows no state badge.
 
 Open polish for any later pass: while the stops stack, the dashed line runs past the last marker to the bottom of the last card.
 

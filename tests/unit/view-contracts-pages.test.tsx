@@ -583,8 +583,8 @@ describe("LandingView", () => {
     expect(text).toContain(LOCKED.landing.heroSubtitle);
     expect(text).toContain(COPY.landing.tagline);
     expect(textsOf(html, "h2")).toEqual([
-      COPY.landing.portalCard.title,
       TIMELINE_VIEW.title,
+      COPY.landing.portalCard.title,
       COUNTDOWNS_VIEW.title,
       LOCKED.landing.promises.assemble,
       LOCKED.landing.promises.launch,
@@ -647,10 +647,10 @@ describe("LandingView", () => {
     );
   });
 
-  it("places the countdowns between the timeline and the promise cards", () => {
+  it("places the timeline above the portal card and the countdowns before the promise cards", () => {
     const html = renderToStaticMarkup(<LandingView {...LANDING_PROPS} />);
     const main = expectSingleMain(html);
-    const order = ["landing-portal-card", "mission-timeline", "countdowns", "landing-promises"];
+    const order = ["mission-timeline", "landing-portal-card", "countdowns", "landing-promises"];
     expect(testIdsIn(main).filter((testId) => order.includes(testId))).toEqual(order);
     expect(main.indexOf("<h1")).toBeLessThan(main.indexOf('data-testid="countdowns"'));
 
