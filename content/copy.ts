@@ -17,7 +17,7 @@ import type { ApplicationSectionId } from "@/lib/validation/application";
 // =============================================================================
 
 export const LOCKED = {
-  brand: "Launchpad",
+  brand: "CalHacks Mission Control",
   landing: {
     heroTitle: "Build what comes next.",
     heroSubtitle: "Your Cal Hacks mission starts here.",
@@ -100,7 +100,7 @@ export const COPY = {
       email: "Email",
       password: "Password",
       pending: "Signing in…",
-      noAccount: "New to Launchpad?",
+      noAccount: "New to CalHacks Mission Control?",
       createAccountLink: "Create an account",
     },
     signup: {
@@ -150,7 +150,7 @@ export const COPY = {
     rate_limited: { title: "Too many attempts", body: "Wait a moment, then try again." },
     forbidden: { title: "Sign-up is unavailable", body: "Try again later." },
     unexpected_error: { title: "Something went wrong", body: "Try again in a moment." },
-    network: { title: "We couldn't reach Launchpad", body: "Check your connection and try again." },
+    network: { title: "We couldn't reach CalHacks Mission Control", body: "Check your connection and try again." },
     validation_failed: {
       title: "Check your details",
       body: "Something in this form couldn't be accepted. Reload the page and try again.",
@@ -290,10 +290,10 @@ export const COPY = {
     },
     unexpected_error: { title: "Something went wrong", body: "Try again in a moment." },
     network: {
-      title: "We couldn't reach Launchpad",
+      title: "We couldn't reach CalHacks Mission Control",
       body: "Check your connection and try again. Your edits stay on this page.",
     },
-    stale_deployment: { title: "Launchpad was updated", body: "Reload the page to continue." },
+    stale_deployment: { title: "CalHacks Mission Control was updated", body: "Reload the page to continue." },
     application_locked: {
       title: "Application submitted",
       body: "This application has already been submitted, so it can't be edited.",
@@ -320,7 +320,7 @@ export const COPY = {
     notFound: {
       title: "Page not found",
       body: "We couldn't find that page.",
-      home: "Go to the Launchpad home page",
+      home: "Go to the CalHacks Mission Control home page",
     },
   },
 } as const;

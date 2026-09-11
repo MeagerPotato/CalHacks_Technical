@@ -1,5 +1,5 @@
 import { LOCKED } from "@/content/copy";
-export function LaunchpadMark() {
+export function BrandMark() {
   return <span className="inline-flex items-center gap-2 font-display text-xl font-extrabold tracking-tight text-ink sm:text-2xl">
     <svg aria-hidden="true" viewBox="0 0 44 44" className="pointer-events-none size-9 shrink-0" fill="none" stroke="var(--color-navy)" strokeWidth="2.2" strokeLinejoin="round">
       <path d="M22 2L38 10L42 29L29 41L10 37L2 20L9 7Z" fill="var(--color-coral)" />

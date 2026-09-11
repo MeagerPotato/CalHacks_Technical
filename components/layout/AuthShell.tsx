@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { LaunchpadMark } from "@/components/art/LaunchpadMark";
+import { BrandMark } from "@/components/art/BrandMark";
 import { AppLink } from "@/components/ui/AppLink";
 import { ROUTES } from "@/lib/routes";
 
@@ -16,7 +16,7 @@ export interface AuthShellProps {
 }
 
 /**
- * Frame for the sign-in, sign-up, and onboarding pages: a header with the Launchpad home link and optional actions,
+ * Frame for the sign-in, sign-up, and onboarding pages: a header with the home link and optional actions,
  * then the page's single `main#main` with its `h1`.
  */
 export function AuthShell({ title, description, children, footer, actions }: AuthShellProps) {
@@ -25,7 +25,7 @@ export function AuthShell({ title, description, children, footer, actions }: Aut
       <header className="border-b-2 border-border bg-surface">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <AppLink href={ROUTES.home} variant="plain">
-            <LaunchpadMark />
+            <BrandMark />
           </AppLink>
           {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
         </div>

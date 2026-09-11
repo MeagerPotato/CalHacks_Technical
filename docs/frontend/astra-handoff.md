@@ -43,7 +43,7 @@ To click through real pages, start Docker Desktop, run `npm run db:start`, and c
 
 | Path | You may change | Must stay |
 |---|---|---|
-| `components/art/**` | Anything inside each component: inline SVG, CSS motion, or `next/image` for files in `public/art/` | File names, component names, and props. Decorative art stays `aria-hidden`. `LaunchpadMark` still renders the text "Launchpad". |
+| `components/art/**` | Anything inside each component: inline SVG, CSS motion, or `next/image` for files in `public/art/` | File names, component names, and props. Decorative art stays `aria-hidden`. `BrandMark` still renders the brand name from `LOCKED.brand`. |
 | `public/art/**` | New image files (prefer SVG; keep raster files small) | |
 | `app/globals.css` | Token values, new tokens, `@utility` rules, `@keyframes`, `--animate-*` tokens | Semantic token names; the `:focus-visible` ring; the reduced-motion block; the `data-reveal` and draw-in rules; the 16px base size. The contrast test must stay green. |
 | `app/fonts.ts` | The display face (the plan also allows Space Grotesk) | The `fontVariables` export and the `--font-body-face` and `--font-display-face` names |
@@ -131,7 +131,7 @@ These come from the plan and must not change. Tests and accessible names depend 
 
 | Key | Text |
 |---|---|
-| `LOCKED.brand` | Launchpad |
+| `LOCKED.brand` | CalHacks Mission Control |
 | `LOCKED.landing.heroTitle` | Build what comes next. |
 | `LOCKED.landing.heroSubtitle` | Your Cal Hacks mission starts here. |
 | `LOCKED.landing.signIn`, `LOCKED.auth.signIn` | Sign in |
@@ -206,7 +206,7 @@ Every slot is a server component with no hooks. Keep the props, keep art decorat
 
 | Component | Props | Where it appears |
 |---|---|---|
-| `LaunchpadMark` | none | Headers on the landing, auth, and portal pages, inside the home link. It must render the text "Launchpad", which names the link. |
+| `BrandMark` | none | Headers on the landing, auth, and portal pages, inside the home link. It must render the brand name from `LOCKED.brand` as text, which names the link. |
 | `HeroArt` | none | Landing hero (plan section 13, "Hero art") |
 | `EngineerArt` | `variant: "landing" \| "dashboard"` | `landing` on the landing page; `dashboard` on the draft portal |
 | `RocketArt` | `stage: "launch" \| "cruise" \| "landing"` | The mission tracker's scene, following the application's stage |
@@ -231,7 +231,7 @@ Every slot is a server component with no hooks. Keep the props, keep art decorat
 
 Your usage is limited, so the list starts with what the demo shows most.
 
-1. **Brand and landing.** Replace `LaunchpadMark`, `HeroArt`, and `EngineerArt` with an original illustration family: a small animal engineer with a sticker-bomb retro-futurist feel, per plan section 13. Use `Sticker` accents on the promise cards and the portal.
+1. **Brand and landing.** Replace `BrandMark`, `HeroArt`, and `EngineerArt` with an original illustration family: a small animal engineer with a sticker-bomb retro-futurist feel, per plan section 13. Use `Sticker` accents on the promise cards and the portal.
 2. **Liftoff and landing.** Build `LiftoffMoment`, `RocketArt` (all three stages), and `LandingMoment` (Accepted and Waitlisted variants) within the motion rules.
 3. **Polish.** Set the type scale, spacing rhythm, card and button states (hover, pressed, focus), and surfaces through `globals.css` tokens and the class maps. Give Launch Readiness and the Mission Tracker their scene treatment.
 4. **Voice.** Rewrite `COPY` in the product voice. Add `FIELD_COPY` help where a question benefits from it, and `SECTION_COPY` intros.

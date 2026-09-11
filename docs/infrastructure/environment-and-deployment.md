@@ -132,7 +132,7 @@ The repository does not create or link a hosted project. When deploying:
 
    Keep the credentials in a password manager. Never commit them.
 
-5. **Check Advisors.** **Advisors → Security** should report no issues for the Launchpad tables and functions.
+5. **Check Advisors.** **Advisors → Security** should report no issues for the app tables and functions.
 
 ## Vercel
 

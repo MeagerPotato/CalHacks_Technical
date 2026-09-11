@@ -12,7 +12,7 @@ import { SubmittedApplicationView } from "@/components/application/SubmittedAppl
 import { EngineerArt } from "@/components/art/EngineerArt";
 import { HeroArt } from "@/components/art/HeroArt";
 import { LandingMoment } from "@/components/art/LandingMoment";
-import { LaunchpadMark } from "@/components/art/LaunchpadMark";
+import { BrandMark } from "@/components/art/BrandMark";
 import { LiftoffMoment } from "@/components/art/LiftoffMoment";
 import { RocketArt } from "@/components/art/RocketArt";
 import { Sticker } from "@/components/art/Sticker";
@@ -120,7 +120,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
           {LOCKED.landing.signIn}
         </AppLink>
         <AppLink href={ROUTES.home} variant="plain">
-          <LaunchpadMark />
+          <BrandMark />
         </AppLink>
         <AppLink href="https://example.com" newTab>
           Example external link
@@ -226,7 +226,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
       </GallerySection>
 
       <GallerySection id="gallery-art" title="Art slots" description="Neutral placeholders; replacements keep these props.">
-        <LaunchpadMark />
+        <BrandMark />
         <HeroArt />
         <EngineerArt variant="landing" />
         <EngineerArt variant="dashboard" />

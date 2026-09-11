@@ -1,5 +1,5 @@
 -- =============================================================================
--- Launchpad demo seed data
+-- CalHacks Mission Control demo seed data
 --
 -- Loaded by `supabase db reset` after migrations, executed as postgres.
 -- Every account created here has an EMPTY password and cannot sign in.

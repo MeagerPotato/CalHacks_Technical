@@ -26,9 +26,9 @@ export type DatabaseErrorLike = Pick<PostgrestError, "code" | "message"> &
 export function logServerError(context: string, error: unknown): void {
   if (error && typeof error === "object") {
     const { code, status, hint, message } = error as Record<string, unknown>;
-    console.error(`[launchpad] ${context}`, { code, status, hint, message });
+    console.error(`[mission-control] ${context}`, { code, status, hint, message });
   } else {
-    console.error(`[launchpad] ${context}`, error);
+    console.error(`[mission-control] ${context}`, error);
   }
 }
 

@@ -1,6 +1,6 @@
-# Launchpad applicant product (Phase 2)
+# CalHacks Mission Control applicant product (Phase 2)
 
-Phase 2 builds the applicant side of Launchpad on the Phase 1 backend contract ([docs/infrastructure](../infrastructure/README.md)). It changes no migrations, RLS policies, or Server Action signatures.
+Phase 2 builds the applicant side of CalHacks Mission Control on the Phase 1 backend contract ([docs/infrastructure](../infrastructure/README.md)). It changes no migrations, RLS policies, or Server Action signatures.
 
 | Document | Audience |
 |---|---|
@@ -55,7 +55,7 @@ Auth and onboarding forms are client components. On submit they:
 
 A thrown action call becomes a notice through `thrownActionNotice` (`app/_components/thrown-notice.ts`):
 
-- an unrecognized action (a new deployment) shows "Launchpad was updated" with a reload action;
+- an unrecognized action (a new deployment) shows "CalHacks Mission Control was updated" with a reload action;
 - anything else shows the auth network notice.
 
 If onboarding finds the session expired, it sends the applicant to sign in and back. Progress is announced through the always-mounted `LiveStatus`.

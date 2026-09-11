@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Launchpad design tokens (PROJECT_PLAN.md section 13).
+ * CalHacks Mission Control design tokens (PROJECT_PLAN.md section 13).
  *
  * The semantic color names below are frozen: components, tests/unit/design-tokens.test.ts, and the Astra handoff
  * depend on them. Values may change only while the contrast test stays green.

@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 
 export interface SkipLinkProps {
-  /** Id of the page's main landmark ("main" on every Launchpad page). */
+  /** Id of the page's main landmark ("main" on every page). */
   targetId: string;
   label: string;
   /**

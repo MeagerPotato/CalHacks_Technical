@@ -1,6 +1,6 @@
 import { EngineerArt } from "@/components/art/EngineerArt";
 import { HeroArt } from "@/components/art/HeroArt";
-import { LaunchpadMark } from "@/components/art/LaunchpadMark";
+import { BrandMark } from "@/components/art/BrandMark";
 import { Sticker, type StickerName } from "@/components/art/Sticker";
 import { AppLink } from "@/components/ui/AppLink";
 import { Card } from "@/components/ui/Card";
@@ -34,7 +34,7 @@ export function LandingView() {
           className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-2 gap-y-2 px-4 py-4 sm:px-5"
         >
           <AppLink href={ROUTES.home} variant="plain">
-            <LaunchpadMark />
+            <BrandMark />
           </AppLink>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <AppLink href={ROUTES.login} variant="quiet">

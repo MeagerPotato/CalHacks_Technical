@@ -4,7 +4,7 @@ Paste everything below the line into Astra, and give it access to the repository
 
 ---
 
-You're doing the creative pass on **Launchpad**, the Cal Hacks application portal. The product already works end to end:
+You're doing the creative pass on **CalHacks Mission Control**, the Cal Hacks application portal. The product already works end to end:
 
 - signup, login, and onboarding;
 - the Hacker and Judge editor, with drafts and Launch Readiness;

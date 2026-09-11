@@ -1,4 +1,4 @@
-# Launchpad infrastructure (Phase 1)
+# CalHacks Mission Control infrastructure (Phase 1)
 
 This folder hands off the infrastructure phase to the product phase. It documents the backend that product pages build on. The project `README.md` belongs to the product phase.
 
