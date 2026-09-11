@@ -36,7 +36,8 @@ export interface ScorecardProps {
   onSaveAndContinue?: () => void;
 }
 
-const SECTION_CLASSES = "flex flex-col gap-5 rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card";
+const SECTION_CLASSES =
+  "workshop-card flex flex-col gap-5 rounded-card border-2 border-t-8 border-border bg-surface p-5 text-ink shadow-card sm:p-6";
 
 function ReadOnlyScorecard({ view, values, overallText }: Pick<ScorecardProps, "view" | "values" | "overallText">) {
   const recommendation = view.recommendation.options.find((option) => option.value === values.recommendation);
@@ -138,7 +139,7 @@ export function Scorecard({
               onValueChange={onScoreChange ? (score) => onScoreChange(dimension.key, score) : undefined}
             />
           ))}
-          <div data-testid="overall-score-panel" className="rounded-control border-2 border-border bg-page p-3">
+          <div data-testid="overall-score-panel" className="rounded-control border-2 border-border bg-accent p-4">
             <p className="font-semibold">{view.overall.label}</p>
             <p data-testid="overall-score" className="text-2xl font-bold">
               {overallText}

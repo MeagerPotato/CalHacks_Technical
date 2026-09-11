@@ -42,7 +42,7 @@ export function ReviewWorkspaceLayout({
       data-testid="review-workspace"
       data-blind={isBlind ? "true" : "false"}
       data-access={access}
-      className="flex w-full flex-col gap-6"
+      className="flex w-full flex-col gap-7"
     >
       {header}
       {notices ? (
@@ -50,12 +50,12 @@ export function ReviewWorkspaceLayout({
           {notices}
         </div>
       ) : null}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div data-testid="workspace-narrative-column" className="flex min-w-0 flex-col gap-6">
           {identity}
           {narrative}
         </div>
-        <div data-testid="workspace-scorecard-column" className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-4">
+        <div data-testid="workspace-scorecard-column" className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-6">
           {scorecard}
           {decision}
         </div>

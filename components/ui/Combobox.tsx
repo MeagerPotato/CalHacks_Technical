@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 
 import type { ChoiceOptionView } from "@/components/ui/RadioGroup";
@@ -231,14 +231,14 @@ export function Combobox({
             inputRef.current?.focus();
           }
         }}
-        className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-control"
+        className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-control border-l-2 border-border bg-highlight disabled:bg-page"
       >
         <ChevronDown aria-hidden="true" className="size-5" />
       </button>
       <div
         data-state={open ? "open" : "closed"}
         hidden={!open}
-        className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-control border-2 border-border bg-surface shadow-card"
+        className="workshop-card absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-control border-2 border-border bg-surface shadow-card"
       >
         <ul
           id={listboxId}
@@ -256,9 +256,10 @@ export function Combobox({
               data-active={option === activeOption ? "true" : "false"}
               onMouseDown={keepInputFocus}
               onClick={() => choose(option)}
-              className="cursor-pointer px-4 py-2 aria-selected:font-semibold data-[active=true]:bg-accent"
+              className="flex cursor-pointer items-center justify-between gap-3 border-b border-border/20 px-4 py-2.5 last:border-b-0 aria-selected:bg-highlight aria-selected:font-bold data-[active=true]:bg-accent"
             >
-              {option.label}
+              <span>{option.label}</span>
+              {option.value === shownValue ? <Check aria-hidden="true" className="size-4 shrink-0" /> : null}
             </li>
           ))}
         </ul>

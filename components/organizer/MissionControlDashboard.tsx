@@ -1,4 +1,5 @@
 import { ExpertiseRadar } from "@/components/organizer/ExpertiseRadar";
+import { Sticker } from "@/components/art/Sticker";
 import { KpiCards } from "@/components/organizer/KpiCards";
 import { QueueProgressCard } from "@/components/organizer/QueueProgressCard";
 import { RecentSubmissions } from "@/components/organizer/RecentSubmissions";
@@ -19,10 +20,11 @@ export interface MissionControlDashboardProps {
 export function MissionControlDashboard({ view }: MissionControlDashboardProps) {
   return (
     <div data-testid="organizer-dashboard" data-empty={view.empty ? "true" : "false"} className="flex w-full flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-extrabold">{view.heading}</h1>
+      <div className="flex flex-wrap items-end justify-between gap-5 rounded-card border-2 border-border bg-dark p-5 text-on-dark shadow-card sm:p-7" data-surface="dark">
+        <div className="flex min-w-0 flex-col gap-2">
+          <h1 className="text-4xl font-extrabold sm:text-5xl">{view.heading}</h1>
           <p>{view.intro}</p>
+          <span aria-hidden="true" className="mt-1"><Sticker name="antenna" /></span>
         </div>
         {view.queue.startReviewing ? (
           <AppLink href={view.queue.startReviewing.href} variant="primary" data-testid="start-reviewing">

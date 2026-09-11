@@ -41,7 +41,7 @@ export function IdentityPanel({ identity, panelRef }: IdentityPanelProps) {
       tabIndex={-1}
       aria-labelledby="identity-panel-title"
       data-testid="identity-panel"
-      className="rounded-card border-2 border-l-8 border-border bg-surface p-5 text-ink shadow-card"
+      className="workshop-card rounded-card border-2 border-l-8 border-border bg-highlight p-5 text-ink shadow-card sm:p-6"
     >
       <h2 id="identity-panel-title" className="text-xl font-bold">
         {identity.title}

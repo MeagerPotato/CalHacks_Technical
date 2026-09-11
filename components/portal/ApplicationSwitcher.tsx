@@ -7,14 +7,14 @@ import type { ApplicationSwitcherView } from "@/lib/view-models/types";
  * application stays on the cream page color. Astra may restyle these but must keep the keys and the contrast rules.
  */
 export const SWITCHER_CURRENT_CLASSES = {
-  hacker: "bg-action text-on-action",
-  judge: "bg-accent text-ink",
+  hacker: "border-border bg-action text-on-action font-extrabold shadow-[inset_0_-2px_0_rgb(20_35_59/0.16)]",
+  judge: "border-border bg-accent text-ink font-extrabold shadow-[inset_0_-2px_0_rgb(20_35_59/0.16)]",
 } as const satisfies Record<ApplicationType, string>;
 
-export const SWITCHER_OTHER_CLASSES = "bg-page text-ink";
+export const SWITCHER_OTHER_CLASSES = "border-transparent bg-page text-ink hover:bg-surface active:bg-surface";
 
 const SWITCHER_ITEM_CLASSES =
-  "inline-flex min-h-11 items-center justify-center rounded-full px-4 py-2 font-semibold no-underline";
+  "inline-flex min-h-11 min-w-24 items-center justify-center rounded-full border-2 px-4 py-2 font-semibold no-underline transition-colors";
 
 export interface ApplicationSwitcherProps {
   view: ApplicationSwitcherView;
@@ -28,7 +28,7 @@ export interface ApplicationSwitcherProps {
 export function ApplicationSwitcher({ view }: ApplicationSwitcherProps) {
   return (
     <nav aria-label={view.label} data-testid="application-switcher">
-      <ul className="inline-flex flex-wrap items-center gap-1 rounded-full border-2 border-border bg-page p-1">
+      <ul className="inline-flex flex-wrap items-center gap-0.5 rounded-full border-2 border-border bg-page p-1 shadow-[0_3px_0_rgb(20_35_59/0.12)]">
         {view.items.map((item) => (
           <li key={item.type}>
             <GuardedLink

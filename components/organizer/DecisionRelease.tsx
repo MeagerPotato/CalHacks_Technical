@@ -67,7 +67,7 @@ export function DecisionRelease({
       data-testid="decision-release"
       data-state={view.state}
       data-step={view.state === "available" ? (confirming ? "confirm" : "choose") : undefined}
-      className="flex flex-col gap-4 rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card"
+      className="workshop-card flex flex-col gap-4 rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card data-[state=available]:border-t-8 data-[state=available]:border-t-highlight data-[state=released]:border-t-8 data-[state=released]:border-t-success sm:p-6"
     >
       <h2 id="decision-release-title" ref={headingRef} tabIndex={-1} className="text-2xl font-bold">
         {view.title}

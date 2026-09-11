@@ -41,7 +41,7 @@ export function ExpertiseRadar({ radar }: ExpertiseRadarProps) {
 
   return (
     <Card labelledBy="expertise-radar-title" data-testid="expertise-radar">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-1">
           <h2 id="expertise-radar-title" className="text-xl font-bold">
             {radar.title}
@@ -50,52 +50,54 @@ export function ExpertiseRadar({ radar }: ExpertiseRadarProps) {
         </div>
         <div className="grid items-start gap-6 lg:grid-cols-2">
           {axes.length > 0 ? (
-            <svg
-              role="img"
-              aria-labelledby="expertise-radar-image-title"
-              viewBox="-300 -215 600 430"
-              data-testid="expertise-radar-chart"
-              className="h-auto w-full"
-            >
-              <title id="expertise-radar-image-title">{radar.imageLabel}</title>
-              <g className="fill-none stroke-border" strokeOpacity={0.3} strokeWidth={1}>
-                {RINGS.map((ring) => (
-                  <polygon key={ring} points={polygonPoints(axes, () => RADIUS * ring)} />
-                ))}
+            <div className="rounded-card border-2 border-border bg-page p-3">
+              <svg
+                role="img"
+                aria-labelledby="expertise-radar-image-title"
+                viewBox="-300 -215 600 430"
+                data-testid="expertise-radar-chart"
+                className="h-auto w-full"
+              >
+                <title id="expertise-radar-image-title">{radar.imageLabel}</title>
+                <g className="fill-none stroke-border" strokeOpacity={0.35} strokeWidth={1.5}>
+                  {RINGS.map((ring) => (
+                    <polygon key={ring} points={polygonPoints(axes, () => RADIUS * ring)} />
+                  ))}
+                  {axes.map((axis, index) => {
+                    const [x, y] = pointOn(index, axes.length, RADIUS);
+                    return <line key={axis.key} x1={0} y1={0} x2={x} y2={y} />;
+                  })}
+                </g>
+                <polygon
+                  data-testid="expertise-radar-shape"
+                  points={polygonPoints(axes, (axis) => RADIUS * axis.fraction)}
+                  className="fill-action stroke-border"
+                  fillOpacity={0.72}
+                  strokeWidth={3}
+                />
                 {axes.map((axis, index) => {
-                  const [x, y] = pointOn(index, axes.length, RADIUS);
-                  return <line key={axis.key} x1={0} y1={0} x2={x} y2={y} />;
+                  const [x, y] = pointOn(index, axes.length, RADIUS * axis.fraction);
+                  return <circle key={axis.key} cx={x} cy={y} r={5} className="fill-highlight stroke-border" strokeWidth={2} />;
                 })}
-              </g>
-              <polygon
-                data-testid="expertise-radar-shape"
-                points={polygonPoints(axes, (axis) => RADIUS * axis.fraction)}
-                className="fill-accent stroke-border"
-                fillOpacity={0.7}
-                strokeWidth={2}
-              />
-              {axes.map((axis, index) => {
-                const [x, y] = pointOn(index, axes.length, RADIUS * axis.fraction);
-                return <circle key={axis.key} cx={x} cy={y} r={4} className="fill-ink" />;
-              })}
-              <g className="fill-ink text-xs font-semibold">
-                {axes.map((axis, index) => {
-                  const [x, y] = pointOn(index, axes.length, LABEL_RADIUS);
-                  return (
-                    <text
-                      key={axis.key}
-                      x={x}
-                      y={y}
-                      textAnchor={anchorFor(x)}
-                      dominantBaseline="middle"
-                      data-expertise={axis.key}
-                    >
-                      {`${axis.label} (${axis.count})`}
-                    </text>
-                  );
-                })}
-              </g>
-            </svg>
+                <g className="fill-ink text-xs font-bold">
+                  {axes.map((axis, index) => {
+                    const [x, y] = pointOn(index, axes.length, LABEL_RADIUS);
+                    return (
+                      <text
+                        key={axis.key}
+                        x={x}
+                        y={y}
+                        textAnchor={anchorFor(x)}
+                        dominantBaseline="middle"
+                        data-expertise={axis.key}
+                      >
+                        {`${axis.label} (${axis.count})`}
+                      </text>
+                    );
+                  })}
+                </g>
+              </svg>
+            </div>
           ) : null}
           <div className="flex flex-col gap-5">
             <div className="overflow-x-auto">
@@ -117,7 +119,7 @@ export function ExpertiseRadar({ radar }: ExpertiseRadarProps) {
                       key={axis.key}
                       data-expertise={axis.key}
                       data-gap={axis.count === 0 ? "true" : "false"}
-                      className="border-b border-border/30"
+                      className="border-b border-border/30 data-[gap=true]:bg-page"
                     >
                       <th scope="row" className="py-1.5 pr-4 font-normal">
                         {axis.label}

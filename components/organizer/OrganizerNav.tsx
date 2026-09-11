@@ -15,12 +15,12 @@ export interface OrganizerNavProps {
 export function OrganizerNav({ label, items }: OrganizerNavProps) {
   return (
     <nav aria-label={label} data-testid="organizer-nav">
-      <ul role="list" className="flex flex-wrap items-center gap-x-5 gap-y-1">
+      <ul role="list" className="flex flex-wrap items-center gap-1 rounded-full border-2 border-border bg-page p-1">
         {items.map((item) => (
           <li
             key={item.id}
             data-current={item.current ?? "false"}
-            className="border-b-4 border-transparent data-[current=page]:border-border data-[current=true]:border-border"
+            className="rounded-full border-2 border-transparent data-[current=page]:border-border data-[current=page]:bg-highlight data-[current=true]:border-border data-[current=true]:bg-highlight"
           >
             <AppLink
               href={item.href}

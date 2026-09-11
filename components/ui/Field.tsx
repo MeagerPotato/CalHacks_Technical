@@ -99,7 +99,7 @@ function OptionalText({ text }: { text?: string | null }) {
  */
 function RequiredMarker() {
   return (
-    <span data-required-marker="" aria-hidden="true" className="ml-0.5 font-bold text-required">
+    <span data-required-marker="" aria-hidden="true" className="ml-1 inline-block font-display text-lg font-black leading-none text-required">
       *
     </span>
   );

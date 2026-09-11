@@ -14,7 +14,13 @@ export interface ApplicationsResultsProps {
   results: ApplicationsResultsView;
 }
 
-const CELL_CLASSES = "px-3 py-3 align-top";
+const CELL_CLASSES = "px-3 py-3.5 align-top";
+
+const ROW_STATE_CLASSES = {
+  complete: "border-l-success",
+  "in-progress": "border-l-highlight",
+  none: "border-l-accent",
+} as const;
 
 function columnLabels(columns: readonly TableColumnView[]): Record<ApplicationColumnKey, string> {
   return Object.fromEntries(columns.map((column) => [column.key, column.label])) as Record<ApplicationColumnKey, string>;
@@ -37,7 +43,7 @@ function ColumnHeader({ column }: { column: TableColumnView }) {
       aria-sort={sort?.direction ?? undefined}
       data-column={column.key}
       data-sorted={sort ? (sort.direction ?? "none") : undefined}
-      className="border-b-2 border-border px-3 py-3 font-semibold whitespace-nowrap"
+      className="border-b-2 border-border bg-accent px-3 py-3 font-bold whitespace-nowrap data-[sorted=ascending]:bg-highlight data-[sorted=descending]:bg-highlight"
     >
       {sort ? (
         <AppLink href={sort.href} data-testid={`sort-${column.key}`}>
@@ -53,7 +59,7 @@ function ColumnHeader({ column }: { column: TableColumnView }) {
 
 function ResultsTable({ results }: ApplicationsResultsProps) {
   return (
-    <div className="hidden overflow-x-auto rounded-card border-2 border-border bg-surface text-ink shadow-card md:block">
+    <div className="workshop-card hidden overflow-x-auto rounded-card border-2 border-border bg-surface text-ink shadow-card md:block">
       <table data-testid="applications-table" className="w-full border-collapse text-left">
         <caption className="px-3 pt-3 text-left font-semibold">{results.caption}</caption>
         <thead>
@@ -70,7 +76,7 @@ function ResultsTable({ results }: ApplicationsResultsProps) {
               data-testid={`application-row-${row.id}`}
               data-status={row.status}
               data-review-state={row.reviewState}
-              className="border-b-2 border-border last:border-b-0"
+              className={`border-b-2 border-l-4 border-border hover:bg-page last:border-b-0 ${ROW_STATE_CLASSES[row.reviewState]}`}
             >
               <th scope="row" className={`${CELL_CLASSES} font-normal`}>
                 <span className="flex flex-col">
@@ -109,7 +115,7 @@ function ResultCards({ results }: ApplicationsResultsProps) {
           data-testid={`application-card-${row.id}`}
           data-status={row.status}
           data-review-state={row.reviewState}
-          className="rounded-card border-2 border-border bg-surface p-4 text-ink shadow-card"
+          className={`workshop-card rounded-card border-2 border-l-8 border-border bg-surface p-4 text-ink shadow-card ${ROW_STATE_CLASSES[row.reviewState]}`}
         >
           <h3 className="text-lg font-bold">
             <AppLink href={row.href}>{row.name}</AppLink>
@@ -189,7 +195,7 @@ export function ApplicationsResults({ results }: ApplicationsResultsProps) {
       {results.message ? (
         <div
           data-testid="application-results-message"
-          className="flex flex-col items-start gap-2 rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card"
+          className="workshop-card flex flex-col items-start gap-2 rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card"
         >
           <h3 className="text-lg font-bold">{results.message.title}</h3>
           <p>{results.message.body}</p>

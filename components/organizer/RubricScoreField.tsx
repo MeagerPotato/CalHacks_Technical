@@ -32,7 +32,7 @@ export function RubricScoreField({ dimension, value, errors = [], onValueChange 
           const anchorId = option.anchor ? `${id}-anchor` : undefined;
           const checked = value !== null && String(value) === option.value;
           return (
-            <div key={option.value} className="flex flex-col items-center gap-1 text-center">
+            <div key={option.value} className="flex min-w-0 flex-col items-center gap-1 rounded-control border border-transparent px-1 py-2 text-center has-[:checked]:border-border has-[:checked]:bg-highlight hover:bg-page">
               <input
                 type="radio"
                 id={id}
@@ -44,7 +44,7 @@ export function RubricScoreField({ dimension, value, errors = [], onValueChange 
                 aria-describedby={anchorId}
                 className="size-5 shrink-0 accent-ink"
               />
-              <label htmlFor={id} className="min-w-8 px-2 font-semibold">
+              <label htmlFor={id} className="min-w-0 px-1 font-bold">
                 {option.label}
               </label>
               {option.anchor ? (

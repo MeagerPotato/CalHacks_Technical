@@ -1,4 +1,4 @@
-import { Check, Circle, CircleDot, type LucideIcon } from "lucide-react";
+import { Check, Circle, CircleDot, Rocket, Satellite, type LucideIcon } from "lucide-react";
 
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Timestamp } from "@/components/ui/Timestamp";
@@ -18,8 +18,10 @@ const STATE_TONES = {
 
 // The current stop gets a sky fill beside its state text; upcoming stops are muted with a dashed edge.
 const STOP_CLASSES =
-  "flex flex-col gap-3 rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card " +
-  "data-[current=true]:bg-accent data-[state=upcoming]:border-dashed data-[state=upcoming]:shadow-none";
+  "group relative z-10 flex min-h-48 flex-col gap-3 rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card " +
+  "data-[current=true]:bg-accent data-[current=true]:shadow-[0_5px_0_rgb(20_35_59/0.22)] " +
+  "data-[state=complete]:border-t-success data-[state=complete]:border-t-[6px] " +
+  "data-[state=upcoming]:border-dashed data-[state=upcoming]:bg-page data-[state=upcoming]:shadow-none";
 
 export interface MissionTimelineProps {
   view: TimelineView;
@@ -34,12 +36,25 @@ export interface MissionTimelineProps {
  */
 export function MissionTimeline({ view, headingId = "mission-timeline-title" }: MissionTimelineProps) {
   return (
-    <section data-testid="mission-timeline" aria-labelledby={headingId} className="flex flex-col gap-4">
-      <h2 id={headingId} className="text-2xl font-bold">
-        {view.title}
-      </h2>
+    <section
+      data-testid="mission-timeline"
+      aria-labelledby={headingId}
+      className="workshop-card relative flex flex-col gap-5 overflow-hidden rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card sm:p-6"
+    >
+      <div className="flex items-center gap-3">
+        <span aria-hidden="true" className="inline-flex size-11 shrink-0 -rotate-6 items-center justify-center rounded-full border-2 border-border bg-highlight">
+          <Satellite className="size-6" />
+        </span>
+        <h2 id={headingId} className="text-2xl font-bold sm:text-3xl">
+          {view.title}
+        </h2>
+      </div>
+      <svg aria-hidden="true" viewBox="0 0 1000 90" preserveAspectRatio="none" className="absolute top-36 right-12 left-12 hidden h-20 lg:block">
+        <path d="M8 63C170 5 310 82 487 38S815 4 992 55" fill="none" stroke="var(--color-navy)" strokeWidth="3" strokeDasharray="4 10" strokeLinecap="round" />
+      </svg>
+      <span aria-hidden="true" className="absolute top-28 bottom-10 left-10 border-l-2 border-dashed border-border sm:hidden" />
       {/* role="list" keeps list semantics in Safari, which drops them from lists styled with list-style: none. */}
-      <ol role="list" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <ol role="list" className="relative grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {view.stops.map((stop) => (
           <li
             key={stop.id}
@@ -49,6 +64,9 @@ export function MissionTimeline({ view, headingId = "mission-timeline-title" }: 
             aria-current={stop.isCurrent ? "step" : undefined}
             className={STOP_CLASSES}
           >
+            <span aria-hidden="true" className="inline-flex size-9 items-center justify-center rounded-full border-2 border-border bg-page group-data-[current=true]:bg-accent">
+              {stop.isCurrent ? <Rocket className="size-5 -rotate-45" /> : <span className="size-2.5 rounded-full bg-ink" />}
+            </span>
             <h3 className="text-xl font-bold">{stop.name}</h3>
             {stop.when || stop.whenText ? (
               <p className="font-semibold">

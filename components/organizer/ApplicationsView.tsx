@@ -14,8 +14,8 @@ export interface ApplicationsViewProps {
 export function ApplicationsView({ view, filters }: ApplicationsViewProps) {
   return (
     <div data-testid="organizer-applications" className="flex w-full flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-extrabold">{view.heading}</h1>
+      <div className="flex flex-col gap-2 rounded-card border-2 border-border bg-dark p-5 text-on-dark shadow-card" data-surface="dark">
+        <h1 className="text-4xl font-extrabold sm:text-5xl">{view.heading}</h1>
         <p>{view.intro}</p>
       </div>
       {filters ?? <ApplicationFilters filters={view.filters} />}

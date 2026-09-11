@@ -21,8 +21,8 @@ export interface OrganizerShellProps {
 export function OrganizerShell({ homeHref, nav, actions, children }: OrganizerShellProps) {
   return (
     <>
-      <header data-testid="organizer-header" className="border-b-2 border-border bg-surface">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
+      <header data-testid="organizer-header" className="border-b-2 border-border bg-accent shadow-[0_3px_0_rgb(20_35_59/0.12)]">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-4">
           <AppLink href={homeHref} variant="plain">
             <BrandMark />
           </AppLink>
@@ -33,7 +33,7 @@ export function OrganizerShell({ homeHref, nav, actions, children }: OrganizerSh
         </div>
       </header>
       <main id="main" tabIndex={-1}>
-        <div className="mx-auto w-full max-w-7xl px-4 py-8">{children}</div>
+        <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:py-10">{children}</div>
       </main>
     </>
   );

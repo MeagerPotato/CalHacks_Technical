@@ -40,7 +40,7 @@ export function SectionPanel({
         </h2>
         {intro ? <p>{intro}</p> : null}
         {requiredLegend ? (
-          <p data-required-legend="" className="text-sm">
+          <p data-required-legend="" className="w-fit rounded-full border border-border bg-page px-3 py-1 text-sm font-semibold">
             {requiredLegend}
           </p>
         ) : null}

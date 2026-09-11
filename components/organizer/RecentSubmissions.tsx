@@ -34,7 +34,7 @@ export function RecentSubmissions({ title, rows, emptyText, viewAll }: RecentSub
                 key={row.id}
                 data-testid={`recent-submission-${row.id}`}
                 data-status={row.status}
-                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-control px-3 py-3 odd:bg-page hover:bg-accent"
               >
                 <div className="flex flex-col">
                   <AppLink href={row.href}>{row.referenceLabel}</AppLink>

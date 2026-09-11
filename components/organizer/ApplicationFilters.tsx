@@ -27,7 +27,7 @@ export function ApplicationFilters({ filters, onSubmit, pending = false, formRef
     <section
       aria-labelledby="application-filters-title"
       data-testid="application-filters"
-      className="rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card"
+      className="workshop-card rounded-card border-2 border-border bg-accent p-5 text-ink shadow-card sm:p-6"
     >
       <h2 id="application-filters-title" className="text-xl font-bold">
         {filters.title}

@@ -25,7 +25,7 @@ export interface WorkspaceHeaderProps {
  */
 export function WorkspaceHeader({ header, blind, onToggleIdentity, identityPending = false, headingRef }: WorkspaceHeaderProps) {
   return (
-    <div data-testid="workspace-header" className="flex flex-col gap-4">
+    <div data-testid="workspace-header" className="flex flex-col gap-5 rounded-card border-2 border-border bg-surface p-5 shadow-card sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <AppLink href={header.back.href} data-testid="back-to-applications">
           {header.back.label}
@@ -38,7 +38,7 @@ export function WorkspaceHeader({ header, blind, onToggleIdentity, identityPendi
       </div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 id="workspace-heading" ref={headingRef} tabIndex={-1} className="text-4xl font-extrabold">
+          <h1 id="workspace-heading" ref={headingRef} tabIndex={-1} className="text-4xl font-extrabold sm:text-5xl">
             {header.heading}
           </h1>
           <div className="flex flex-wrap items-center gap-2">
@@ -62,7 +62,7 @@ export function WorkspaceHeader({ header, blind, onToggleIdentity, identityPendi
       <div
         data-testid="blind-mode"
         data-blind={blind.isBlind ? "true" : "false"}
-        className="flex flex-wrap items-center justify-between gap-3 rounded-card border-2 border-border p-3 text-ink data-[blind=false]:bg-highlight data-[blind=true]:bg-accent"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-card border-2 border-border p-4 data-[blind=false]:bg-highlight data-[blind=false]:text-ink data-[blind=true]:bg-dark data-[blind=true]:text-on-dark data-[blind=true]:[&_:focus-visible]:outline-focus-on-dark"
       >
         <p id="blind-mode-status" className="font-semibold">
           {blind.statusText}
