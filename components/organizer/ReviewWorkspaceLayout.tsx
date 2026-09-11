@@ -42,7 +42,7 @@ export function ReviewWorkspaceLayout({
       data-testid="review-workspace"
       data-blind={isBlind ? "true" : "false"}
       data-access={access}
-      className="flex flex-col gap-6"
+      className="flex w-full flex-col gap-6"
     >
       {header}
       {notices ? (

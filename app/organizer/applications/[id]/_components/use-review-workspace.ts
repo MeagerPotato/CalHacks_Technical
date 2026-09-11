@@ -20,6 +20,7 @@ import { REVIEW_SCHEMAS } from "@/lib/validation/review";
 import {
   organizerNoticeFor,
   organizerSignInHref,
+  queueDoneNotice,
   type OrganizerFeedbackCode,
 } from "@/lib/view-models/organizer-feedback";
 import { REVIEWED_QUERY_PARAM, reviewWorkspaceHref } from "@/lib/view-models/organizer-routes";
@@ -242,8 +243,8 @@ export function useReviewWorkspace(view: ReviewWorkspaceView) {
           router.push(reviewWorkspaceHref(next, { reviewedReference: current.reference }));
           return;
         }
-        const done = ORGANIZER_COPY.workspace.queueDone;
-        setNotice({ id: "queue-done", tone: "success", title: done.title, body: done.body, actions: [] });
+        const done = queueDoneNotice();
+        setNotice(done);
         announce(done.title);
       } finally {
         inFlightRef.current = false;

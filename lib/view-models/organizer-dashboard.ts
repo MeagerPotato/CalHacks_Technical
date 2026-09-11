@@ -70,11 +70,14 @@ export function toExpertiseRadarView(dashboard: OrganizerDashboard): ExpertiseRa
   const counts = new Map<string, number>(
     dashboard.expertiseCoverage.map((entry) => [entry.expertise, toCount(entry.judgeCount)]),
   );
-  const largest = Math.max(0, ...counts.values());
-  const axes = JUDGE_EXPERTISE_OPTIONS.map((option) => {
-    const count = counts.get(option.value) ?? 0;
-    return { key: option.value, label: option.label, count, fraction: largest === 0 ? 0 : count / largest };
-  });
+  const counted = JUDGE_EXPERTISE_OPTIONS.map((option) => ({
+    key: option.value,
+    label: option.label,
+    count: counts.get(option.value) ?? 0,
+  }));
+  // Only listed categories set the scale, so an unknown stored category cannot shrink the chart.
+  const largest = Math.max(0, ...counted.map((axis) => axis.count));
+  const axes = counted.map((axis) => ({ ...axis, fraction: largest === 0 ? 0 : axis.count / largest }));
 
   const gapKeys = new Set<string>(dashboard.expertiseGaps);
   const gapItems = JUDGE_EXPERTISE_OPTIONS.filter((option) => gapKeys.has(option.value)).map((option) => option.label);

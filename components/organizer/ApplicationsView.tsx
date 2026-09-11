@@ -13,7 +13,7 @@ export interface ApplicationsViewProps {
 /** The applications page content: the `h1` and intro, the filter form, and the results. */
 export function ApplicationsView({ view, filters }: ApplicationsViewProps) {
   return (
-    <div data-testid="organizer-applications" className="flex flex-col gap-6">
+    <div data-testid="organizer-applications" className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-4xl font-extrabold">{view.heading}</h1>
         <p>{view.intro}</p>

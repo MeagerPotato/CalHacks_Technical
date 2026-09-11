@@ -18,7 +18,7 @@ export interface MissionControlDashboardProps {
  */
 export function MissionControlDashboard({ view }: MissionControlDashboardProps) {
   return (
-    <div data-testid="organizer-dashboard" data-empty={view.empty ? "true" : "false"} className="flex flex-col gap-8">
+    <div data-testid="organizer-dashboard" data-empty={view.empty ? "true" : "false"} className="flex w-full flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <h1 className="text-4xl font-extrabold">{view.heading}</h1>

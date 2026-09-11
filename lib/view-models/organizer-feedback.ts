@@ -77,7 +77,8 @@ export function organizerNoticeFor(code: OrganizerFeedbackCode, options: { signI
   const spec: NoticeSpec = known ? NOTICE_SPECS[code] : UNEXPECTED;
   const copy = ORGANIZER_COPY.notices[spec.copy];
   return {
-    id: known ? code : "unexpected_error",
+    // The id names the copy, so codes that share the unexpected error notice share its id.
+    id: spec.copy,
     tone: spec.tone,
     title: copy.title,
     body: copy.body,
@@ -88,4 +89,10 @@ export function organizerNoticeFor(code: OrganizerFeedbackCode, options: { signI
 /** A sign-in link that returns to `path` after signing in (opened in a new tab by the notice). */
 export function organizerSignInHref(path: string): string {
   return `${ROUTES.login}?next=${encodeURIComponent(path)}`;
+}
+
+/** The success notice shown when Save review and continue finds no other application needing review. */
+export function queueDoneNotice(): NoticeView {
+  const { title, body } = ORGANIZER_COPY.workspace.queueDone;
+  return { id: "queue-done", tone: "success", title, body, actions: [] };
 }
