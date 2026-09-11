@@ -62,7 +62,7 @@ export function MissionTracker({ view, backHref, backLabel, progressLabel, relea
 
       <div className="grid items-center gap-8 md:grid-cols-2">
         <div className="flex flex-col gap-4">
-          <h1 className="text-3xl font-bold sm:text-4xl">{view.headline}</h1>
+          <h1 className="text-4xl font-bold leading-tight sm:text-5xl">{view.headline}</h1>
           <div>
             <StatusBadge status={view.status} label={view.statusLabel} />
           </div>
@@ -84,7 +84,7 @@ export function MissionTracker({ view, backHref, backLabel, progressLabel, relea
       ) : null}
 
       {/* role="list" keeps list semantics in Safari, which drops them from lists styled with list-style: none. */}
-      <ol role="list" aria-label={progressLabel} className="grid gap-4 md:grid-cols-3">
+      <ol role="list" aria-label={progressLabel} className="mission-legs grid gap-4 md:grid-cols-3">
         {view.legs.map((leg) => (
           <li
             key={leg.leg}

@@ -6,7 +6,7 @@ import type { ChangeEvent, HTMLAttributes, Ref } from "react";
  * cream is only 2.89:1).
  */
 export const INPUT_CLASSES =
-  "block w-full rounded-control border-2 border-border bg-surface px-3 py-2.5 text-base text-ink " +
+  "block w-full rounded-control border-2 border-border bg-surface px-4 py-3 text-base text-ink " +
   "aria-invalid:ring-2 aria-invalid:ring-danger-edge aria-invalid:ring-inset";
 
 export interface TextInputProps {

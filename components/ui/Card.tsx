@@ -19,7 +19,7 @@ export interface CardProps {
 
 /** A bordered content card. */
 export function Card({ labelledBy, tone = "default", children, "data-testid": testId }: CardProps) {
-  const className = `rounded-card border-2 border-border p-5 text-ink shadow-card ${CARD_TONE_CLASSES[tone]}`;
+  const className = `workshop-card rounded-card border-2 border-border p-5 sm:p-6 text-ink shadow-card ${CARD_TONE_CLASSES[tone]}`;
 
   if (labelledBy) {
     return (

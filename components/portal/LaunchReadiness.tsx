@@ -62,7 +62,7 @@ export function LaunchReadiness({
   const Heading = headingLevel === 3 ? "h3" : "h2";
 
   return (
-    <section data-testid="launch-readiness" aria-labelledby={headingId} className="flex flex-col gap-4">
+    <section data-testid="launch-readiness" aria-labelledby={headingId} className="workshop-readiness flex flex-col gap-4">
       <Heading id={headingId} className={headingLevel === 3 ? "text-xl font-bold" : "text-2xl font-bold"}>
         {LOCKED.editor.launchReadiness}
       </Heading>

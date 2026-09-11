@@ -82,12 +82,12 @@ export const COPY = {
     navLabel: "Main",
     portalCard: {
       title: "Start your mission",
-      body: "Apply as a Hacker or a Judge, or sign in to continue your application.",
+      body: "Bring your curiosity. Apply as a Hacker or Judge, or pick up where you left off.",
     },
     promises: {
-      assemble: "Build your application one short section at a time and save your draft whenever you like.",
-      launch: "Review every answer, then submit when your application is ready.",
-      explore: "Follow your application from launch to landing with real status at every step.",
+      assemble: "A little about you. A little about what you love to build. Save your draft as you go.",
+      launch: "Give your answers one last look. When everything is ready, send your application on its way.",
+      explore: "Follow your application from submission to decision. Your mission tracker shows where things stand.",
     },
   },
   auth: {
@@ -96,7 +96,7 @@ export const COPY = {
     },
     login: {
       title: "Sign in",
-      description: "Sign in to continue your Launchpad application.",
+      description: "Welcome back to the workshop. Sign in to pick up where you left off.",
       email: "Email",
       password: "Password",
       pending: "Signing in…",
@@ -237,7 +237,7 @@ export const COPY = {
     codeOfConductAgreement: "I agree to follow the Cal Hacks code of conduct.",
   },
   review: {
-    intro: "Check your answers. Use the edit links to change anything before you submit.",
+    intro: "One last preflight check. Read through your answers and use the edit links for any finishing touches.",
     missing: (count: number) =>
       count === 1 ? "1 required answer is missing." : `${count} required answers are missing.`,
     goToMissing: (sectionLabel: string) => `Go to ${sectionLabel}`,
@@ -247,7 +247,7 @@ export const COPY = {
     editSection: (sectionLabel: string) => `Edit ${sectionLabel}`,
     agreementAccepted: "Accepted",
     agreementNotAccepted: "Not accepted",
-    launchMessage: "Your application is on its way to Mission Control.",
+    launchMessage: "You built it. You launched it. Your application is on its way to Mission Control.",
   },
   submitted: {
     title: "Your submitted application",
@@ -329,4 +329,12 @@ export const COPY = {
 export const FIELD_COPY: Readonly<Record<string, { readonly label?: string; readonly help?: string } | undefined>> = {};
 
 /** Optional intros shown at the top of each application section. */
-export const SECTION_COPY: Readonly<Partial<Record<ApplicationSectionId, { readonly intro?: string }>>> = {};
+export const SECTION_COPY: Readonly<Partial<Record<ApplicationSectionId, { readonly intro?: string }>>> = {
+  about: { intro: "Every mission starts with a person. Tell us a little about you." },
+  education: { intro: "Tell us where you are learning and what you are exploring." },
+  experience: { intro: "Show us the interests and experience you bring to the workshop." },
+  professional: { intro: "Tell us about the work you do and the expertise you bring to the workshop." },
+  judging: { intro: "Share your judging experience, when you can help, and anything that could be a conflict of interest." },
+  short_answers: { intro: "A few questions, answered in your own words. We want to hear how you think." },
+  agreements: { intro: "Great things get built when people look out for each other. Review the agreement before you continue." },
+};

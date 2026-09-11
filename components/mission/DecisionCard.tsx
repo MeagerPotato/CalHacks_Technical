@@ -22,9 +22,9 @@ export function DecisionCard({ decision, releasedPrefix }: DecisionCardProps) {
       data-status={decision.status}
       data-reveal="after-landing"
       aria-labelledby={TITLE_ID}
-      className="flex flex-col gap-4 rounded-card border-2 border-border bg-surface p-5 text-ink shadow-card"
+      className="workshop-card flex flex-col gap-4 rounded-card border-2 border-border bg-surface p-6 sm:p-8 text-ink shadow-card"
     >
-      <h2 id={TITLE_ID} className="text-2xl font-bold">
+      <h2 id={TITLE_ID} className="text-3xl font-bold">
         {decision.label}
       </h2>
       <div>

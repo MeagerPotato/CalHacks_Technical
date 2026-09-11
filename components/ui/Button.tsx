@@ -5,8 +5,8 @@ export type ButtonVariant = "primary" | "secondary" | "quiet";
 
 /** Variant styles. Astra may restyle them but must keep the keys and the contrast rules (navy text on coral). */
 export const VARIANT_CLASSES = {
-  primary: "border-border bg-action text-on-action",
-  secondary: "border-border bg-surface text-ink",
+  primary: "pressable border-border bg-action text-on-action",
+  secondary: "pressable border-border bg-surface text-ink",
   quiet: "border-transparent bg-transparent text-ink underline underline-offset-4",
 } as const satisfies Record<ButtonVariant, string>;
 

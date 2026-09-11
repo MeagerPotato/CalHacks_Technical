@@ -1,3 +1,4 @@
+import { Sticker } from "@/components/art/Sticker";
 import { Badge } from "@/components/ui/Badge";
 import type { PortalWelcomeView } from "@/lib/view-models/types";
 
@@ -9,7 +10,10 @@ export interface PortalWelcomeProps {
 export function PortalWelcome({ view }: PortalWelcomeProps) {
   return (
     <div className="flex flex-col gap-3">
-      <h1 className="text-3xl font-bold sm:text-4xl">{view.greeting}</h1>
+      <div className="flex items-center gap-3">
+        <Sticker name="patch" />
+        <h1 className="text-3xl font-bold sm:text-4xl">{view.greeting}</h1>
+      </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Badge tone="neutral">{view.typeLabel}</Badge>
         <p className="text-sm font-semibold">{view.reference}</p>
