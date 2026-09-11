@@ -40,8 +40,8 @@ function presentText(value: unknown): string | null {
 }
 
 function toWelcome(viewer: PortalViewInput["viewer"], application: ApplicantApplication): PortalWelcomeView {
-  // The profile display name wins; the preferred-name answer covers accounts without one. A blank name is no name.
-  const name = presentText(viewer.displayName) ?? presentText(application.responses.preferredName);
+  // The profile display name wins; the full-name answer covers accounts without one. A blank name is no name.
+  const name = presentText(viewer.displayName) ?? presentText(application.responses.fullName);
   return {
     greeting: COPY.portal.greeting(name),
     typeLabel: APPLICATION_TYPE_LABELS[application.type],
@@ -106,7 +106,7 @@ function toSubmittedView(application: ApplicantApplication, welcome: PortalWelco
 /**
  * The portal dashboard for the signed-in applicant's application.
  *
- * - Draft: a greeting using the display name, else a non-blank preferred-name answer; progress with the next step
+ * - Draft: a greeting using the display name, else a non-blank full-name answer; progress with the next step
  *   (the next incomplete section, or review); a start, continue, or review call to action that links to that step;
  *   the last-saved time (null until the first save); the deadline; and Launch Readiness items.
  * - Any other status: the status label, launch time, deadline, and links to the mission tracker and the submitted

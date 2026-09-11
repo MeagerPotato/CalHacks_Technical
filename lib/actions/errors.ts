@@ -7,6 +7,7 @@ const DATABASE_HINT_CODES: Record<string, ActionErrorCode> = {
   forbidden: "forbidden",
   not_found: "not_found",
   invalid_account_role: "forbidden",
+  invalid_application_types: "forbidden",
   application_type_mismatch: "application_type_mismatch",
   role_application_mismatch: "forbidden",
   application_locked: "application_locked",

@@ -31,12 +31,13 @@ const GRADUATION_YEAR_MESSAGE = "Enter a whole number from 2000 to 2040.";
 const TEXT = COPY.editor.saveStatus;
 
 // Partial drafts are built inline so these tests control exactly which sections are complete.
-/** About in progress: bio is missing. */
-const ABOUT_STARTED: HackerResponses = { preferredName: "Partial Hacker", location: "Berkeley, CA (Pacific Time)" };
+/** About in progress: birthdate and city are missing. */
+const ABOUT_STARTED: HackerResponses = { fullName: "Partial Hacker", countryOfResidence: "US" };
 /** About complete; every later section untouched. */
 const ABOUT_DONE: HackerResponses = {
   ...ABOUT_STARTED,
-  bio: "Student builder who is partway through this application.",
+  birthdate: "2006-01-20",
+  cityOfResidence: "Berkeley",
 };
 /** About and Education complete; every later section untouched. */
 const EDUCATION_DONE: HackerResponses = {
@@ -321,27 +322,27 @@ describe("SAVE_SUCCEEDED", () => {
     const initial = initEditorState(hackerApplication({}, { updatedAt: T0 }));
     const edited = reduce(
       initial,
-      changed("preferredName", "Partial Hacker"),
-      changed("location", "Berkeley"),
+      changed("fullName", "Partial Hacker"),
+      changed("cityOfResidence", "Berkeley"),
       changed("skills", ["web"]),
     );
     const draft = draftFor(edited);
-    expect(Object.keys(draft.sent).sort()).toEqual(["location", "preferredName", "skills"]);
+    expect(Object.keys(draft.sent).sort()).toEqual(["cityOfResidence", "fullName", "skills"]);
 
     const inFlight = reduce(
       edited,
       { type: "SAVE_STARTED", trigger: "save" },
-      changed("location", "Berkeley, CA"),
+      changed("cityOfResidence", "Berkeley, CA"),
       changed("bio", "Student builder."),
     );
     const application = hackerApplication(
-      { preferredName: "Partial Hacker", location: "Berkeley", skills: ["web"] },
+      { fullName: "Partial Hacker", cityOfResidence: "Berkeley", skills: ["web"] },
       { updatedAt: T1 },
     );
     const next = editorReducer(inFlight, saveSucceeded(application, draft));
 
     expect(next.saved).toBe(application);
-    expect(next.edits).toEqual({ location: "Berkeley, CA", bio: "Student builder." });
+    expect(next.edits).toEqual({ cityOfResidence: "Berkeley, CA", bio: "Student builder." });
     expect(next.saveStatus).toBe("idle");
   });
 
@@ -596,14 +597,14 @@ describe("submitting", () => {
 
     const state: EditorState = {
       ...reduce(initEditorState(incomplete), { type: "SUBMIT_STARTED" }),
-      serverErrors: { preferredName: ["Old message."] },
+      serverErrors: { fullName: ["Old message."] },
       formErrors: ["Old form message."],
     };
     const error = failure("application_incomplete", { fieldErrors, formErrors: ["Form message."] });
     const next = editorReducer(state, { type: "SUBMIT_FAILED", error });
 
     expect(next.serverErrors).toEqual(fieldErrors);
-    expect(next.serverErrors).not.toHaveProperty("preferredName");
+    expect(next.serverErrors).not.toHaveProperty("fullName");
     expect(next.serverErrors).not.toBe(fieldErrors);
     expect(next.formErrors).toEqual(["Form message."]);
     expect(next.phase).toBe("editing");
@@ -889,10 +890,10 @@ describe("selectSaveStatus", () => {
       errors: {
         school: ["Required."],
         major: [],
-        location: ["An error on a saved answer."],
+        cityOfResidence: ["An error on a saved answer."],
         graduationYear: [GRADUATION_YEAR_MESSAGE],
       },
-      clientErrors: { school: ["Required."], graduationYear: [GRADUATION_YEAR_MESSAGE], links: [] },
+      clientErrors: { school: ["Required."], graduationYear: [GRADUATION_YEAR_MESSAGE], githubUrl: [] },
     };
 
     // school (dirty with an error and a client error) and graduationYear (client error) count once each.

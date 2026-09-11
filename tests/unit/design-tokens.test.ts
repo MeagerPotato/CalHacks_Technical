@@ -34,6 +34,7 @@ const SEMANTIC_TOKENS = [
   "--color-focus",
   "--color-focus-on-dark",
   "--color-danger-edge",
+  "--color-required",
 ];
 
 const SHAPE_AND_MOTION_TOKENS = [
@@ -54,6 +55,8 @@ const TEXT_PAIRS = [
   ["--color-ink", "--color-highlight"],
   ["--color-ink", "--color-accent"],
   ["--color-on-dark", "--color-dark"],
+  ["--color-required", "--color-page"],
+  ["--color-required", "--color-surface"],
 ] as const;
 
 const NON_TEXT_PAIRS = [

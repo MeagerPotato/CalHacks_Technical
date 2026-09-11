@@ -114,9 +114,10 @@ describe("sectionForField", () => {
 
 describe("resolveInitialStep", () => {
   const partialHacker = calculateApplicationCompletion("hacker", {
-    preferredName: "Maya",
-    location: "Oakland, CA",
-    bio: "Builder",
+    fullName: "Maya",
+    birthdate: "2006-03-14",
+    countryOfResidence: "US",
+    cityOfResidence: "Oakland",
   });
 
   it("uses a valid requested section", () => {

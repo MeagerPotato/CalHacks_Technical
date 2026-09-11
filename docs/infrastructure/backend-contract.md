@@ -134,8 +134,8 @@ Call a guard at the top of each protected page or layout. `proxy.ts` refreshes t
 
 - Payload keys follow `HackerApplicationDraftInput` or `JudgeApplicationDraftInput`.
 - Provided keys are validated (types, option values, limits) and merged. Omitted keys keep their saved values. Unknown keys are ignored.
-- `null` clears any answer. A blank or whitespace-only string also clears a text answer. For choice, number, agreement (`codeOfConductAccepted`), and list fields (including `links`), send `null` to clear; a blank string fails with `validation_failed`.
-- Draft links can be any text up to 300 characters. Submission requires every link to be an http(s) URL with a domain name and an optional port (`HTTP_LINK_PATTERN`).
+- `null` clears any answer. A blank or whitespace-only string also clears a text answer. For choice (including `countryOfResidence`), number, date (`birthdate`), profile link, agreement (`codeOfConductAccepted`), and list fields, send `null` to clear; a blank string fails with `validation_failed`.
+- Drafts and submissions check answers the same way. `birthdate` must be a real `YYYY-MM-DD` calendar date from `APPLICATION_LIMITS.birthdate.min` to `.max`. `countryOfResidence` must be one of `COUNTRY_CODES`. `linkedinUrl`, `githubUrl`, and `devpostUrl` must match their pattern in `PROFILE_LINK_PATTERN_SOURCES` (a LinkedIn `/in/` page, a GitHub username, or a Devpost username) and stay within 300 characters.
 - `completion_percent` is computed on the server.
 - Overlapping saves are merged instead of overwriting each other: a write only succeeds against the version it read, and after three lost races the action returns `conflict`.
 
@@ -269,9 +269,14 @@ Returns null for an unknown or invalid id.
   application: {
     id; referenceNumber; applicantReference; type; status; completionPercent;
     launchedAt; reviewStartedAt; decisionReleasedAt; createdAt; updatedAt;
-    narrative: /* responses without preferredName, school/company, links */;
+    narrative: /* responses without the IDENTITY_RESPONSE_KEYS answers */;
   };
-  identity: { applicationId; displayName; email; preferredName; affiliation; links: string[] } | null; // null unless revealIdentity
+  identity: {
+    applicationId; displayName; email;
+    fullName; birthdate /* YYYY-MM-DD */; countryOfResidence /* ISO code */; cityOfResidence; // each string | null
+    affiliation /* school or company */ | null;
+    links: string[]; // LinkedIn, GitHub, then Devpost, when answered
+  } | null; // null unless revealIdentity
   isBlind: boolean;
   review: {
     id; applicationId; reviewerId; isMine: boolean; scores: Record<string, number>;
@@ -285,7 +290,7 @@ Returns null for an unknown or invalid id.
 }
 ```
 
-Blind review is the default. `IDENTITY_RESPONSE_KEYS` and `splitIdentityResponses` in `@/lib/domain/applicant-identity` define which answers are withheld. `identity.links` contains only links that pass `isHttpLink`, so they are safe to render as `href` values.
+Blind review is the default. `IDENTITY_RESPONSE_KEYS` and `splitIdentityResponses` in `@/lib/domain/applicant-identity` define which answers are withheld: full name, birthdate, country and city of residence, the three profile links, and school (Hacker) or company (Judge). `identity.links` contains only links that pass `isProfileLink`, so they are safe to render as `href` values.
 
 ### `getNextUnreviewedApplicationId(afterApplicationId?)`
 
@@ -336,8 +341,8 @@ Review ownership:
 
 | Module | Exports |
 |---|---|
-| `@/lib/application-config` | `APPLICATION_FORMS[type].sections[]`, each `{ id, label, fields: ApplicationFieldConfig[] }`. Each field is `{ key, label, kind, required, identifying, maxLength?, min?, max?, maxItems?, options? }`, with `kind` one of `short_text`, `long_text`, `whole_number`, `single_choice`, `multi_choice`, `link_list`, `agreement`. Also `RUBRIC_FORMS[type]`, `RUBRIC_DIMENSION_LABELS`, the label maps (`ACCOUNT_ROLE_LABELS`, `APPLICATION_TYPE_LABELS`, `APPLICATION_STATUS_LABELS`, `RECOMMENDATION_LABELS`), and the option lists (`PUBLIC_ACCOUNT_ROLE_OPTIONS`, `EXPERIENCE_LEVEL_OPTIONS`, `HACKER_SKILL_OPTIONS`, `JUDGE_EXPERTISE_OPTIONS`, `JUDGE_AVAILABILITY_OPTIONS`, `PROJECT_CATEGORY_OPTIONS`, `RECOMMENDATION_OPTIONS`). Field, rubric, recommendation, experience-level, and status labels use the plan's wording. Section labels and the option labels for skills, expertise areas, availability blocks, and project categories are not in the plan; they are placeholders the product phase may replace. |
-| `@/lib/validation/application` | `hackerApplicationSchema`, `judgeApplicationSchema`, `hackerApplicationDraftSchema`, `judgeApplicationDraftSchema`, `APPLICATION_SCHEMAS`, `getApplicationSubmissionSchema`, `getApplicationDraftSchema`, `APPLICATION_SECTIONS`, `APPLICATION_LIMITS`, `HTTP_LINK_PATTERN`, `HTTP_LINK_PATTERN_SOURCE`, the option tuples (`EXPERIENCE_LEVELS`, `HACKER_SKILLS`, `JUDGE_EXPERTISE_AREAS`, `JUDGE_AVAILABILITY_BLOCKS`, `PROJECT_CATEGORIES`), the helpers (`getApplicationSections`, `getApplicationFieldKeys`, `isRequiredApplicationField`, `getRequiredApplicationFieldKeys`, `mergeApplicationResponses`, `parseStoredResponses`, `isHttpLink`), and the response and draft types. |
+| `@/lib/application-config` | `APPLICATION_FORMS[type].sections[]`, each `{ id, label, fields: ApplicationFieldConfig[] }`. Each field is `{ key, label, kind, required, identifying, maxLength?, min?, max?, maxItems?, options? }`, with `kind` one of `short_text`, `long_text`, `whole_number`, `date`, `single_choice`, `searchable_choice` (a filterable list, used for `countryOfResidence`), `multi_choice`, `profile_link`, `agreement`. Also `RUBRIC_FORMS[type]`, `RUBRIC_DIMENSION_LABELS`, the label maps (`ACCOUNT_ROLE_LABELS`, `APPLICATION_TYPE_LABELS`, `APPLICATION_STATUS_LABELS`, `RECOMMENDATION_LABELS`), and the option lists (`PUBLIC_ACCOUNT_ROLE_OPTIONS`, `COUNTRY_OPTIONS`, `EXPERIENCE_LEVEL_OPTIONS`, `HACKER_SKILL_OPTIONS`, `JUDGE_EXPERTISE_OPTIONS`, `JUDGE_AVAILABILITY_OPTIONS`, `PROJECT_CATEGORY_OPTIONS`, `RECOMMENDATION_OPTIONS`). Field, rubric, recommendation, experience-level, and status labels use the plan's wording. Section labels and the option labels for skills, expertise areas, availability blocks, and project categories are not in the plan; they are placeholders the product phase may replace. |
+| `@/lib/validation/application` | `hackerApplicationSchema`, `judgeApplicationSchema`, `hackerApplicationDraftSchema`, `judgeApplicationDraftSchema`, `APPLICATION_SCHEMAS`, `getApplicationSubmissionSchema`, `getApplicationDraftSchema`, `APPLICATION_SECTIONS`, `APPLICATION_LIMITS`, `PROFILE_LINK_PATTERN_SOURCES`, `PROFILE_LINK_KEYS`, the option tuples (`COUNTRY_CODES`, `EXPERIENCE_LEVELS`, `HACKER_SKILLS`, `JUDGE_EXPERTISE_AREAS`, `JUDGE_AVAILABILITY_BLOCKS`, `PROJECT_CATEGORIES`), the helpers (`getApplicationSections`, `getApplicationFieldKeys`, `isRequiredApplicationField`, `getRequiredApplicationFieldKeys`, `mergeApplicationResponses`, `parseStoredResponses`, `isCalendarDate`, `isProfileLink`), and the response and draft types. Country names and codes come from `@/lib/countries` (`COUNTRIES`, United States first). |
 | `@/lib/validation/review` | `hackerReviewDraftSchema`, `judgeReviewDraftSchema`, `hackerReviewSubmissionSchema`, `judgeReviewSubmissionSchema`, `REVIEW_SCHEMAS`, `RUBRIC_DIMENSIONS`, `RUBRIC_SCORE_RANGE`, `REVIEW_NOTES_MAX_LENGTH`, `compactRubricScores`, `calculateOverallScore`, and the input and output types. |
 | `@/lib/validation/auth` | `emailSchema`, `signUpSchema`, `signInSchema`, `profileUpdateSchema`, `PASSWORD_MIN_LENGTH`, `PASSWORD_MAX_LENGTH`, `DISPLAY_NAME_MAX_LENGTH`, and the input types. |
 | `@/lib/validation/organizer` | `applicationIdSchema`, `applicationListFiltersSchema`, `parseApplicationListFilters`, `toApplicationListSearchParams`, `decisionSchema`, `REVIEW_STATE_FILTERS`, `APPLICATION_SORTS`, `DEFAULT_APPLICATION_SORT`, `DEFAULT_PAGE_SIZE`, `MAX_PAGE_SIZE`, `MAX_PAGE`, `SEARCH_MAX_LENGTH`. |

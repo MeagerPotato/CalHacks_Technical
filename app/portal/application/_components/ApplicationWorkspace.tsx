@@ -177,6 +177,7 @@ export function ApplicationWorkspace({ application, initialStep, lastSaved, laun
             headingId={sectionHeadingId(section.id)}
             title={sectionCopy.label}
             intro={sectionCopy.intro}
+            requiredLegend={section.fields.some((field) => field.required) ? COPY.editor.requiredLegend : null}
             onSubmit={saveAndContinue}
             actions={
               <>

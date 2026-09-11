@@ -20,16 +20,34 @@ function hintsFor(type: ApplicationType): Record<string, string | null> {
 describe("resolveFieldCopy hints", () => {
   it("covers every field kind across the two forms", () => {
     expect(new Set(formFields("hacker").map((field) => field.kind))).toEqual(
-      new Set(["short_text", "long_text", "link_list", "whole_number", "single_choice", "multi_choice", "agreement"]),
+      new Set([
+        "short_text",
+        "long_text",
+        "date",
+        "searchable_choice",
+        "profile_link",
+        "whole_number",
+        "single_choice",
+        "multi_choice",
+        "agreement",
+      ]),
     );
   });
 
+  const ABOUT_YOU_HINTS = {
+    fullName: hints.maxCharacters(APPLICATION_LIMITS.shortText),
+    birthdate: null,
+    countryOfResidence: hints.searchableChoice,
+    cityOfResidence: hints.maxCharacters(APPLICATION_LIMITS.shortText),
+    linkedinUrl: hints.profileLink("https://www.linkedin.com/in/your-name"),
+    githubUrl: hints.profileLink("https://github.com/your-username"),
+    devpostUrl: hints.profileLink("https://devpost.com/your-username"),
+    bio: hints.maxCharacters(APPLICATION_LIMITS.bio),
+  };
+
   it("generates hacker hints from the config limits", () => {
     expect(hintsFor("hacker")).toEqual({
-      preferredName: hints.maxCharacters(APPLICATION_LIMITS.preferredName),
-      location: hints.maxCharacters(APPLICATION_LIMITS.shortText),
-      bio: hints.maxCharacters(APPLICATION_LIMITS.bio),
-      links: hints.links(APPLICATION_LIMITS.links),
+      ...ABOUT_YOU_HINTS,
       school: hints.maxCharacters(APPLICATION_LIMITS.shortText),
       major: hints.maxCharacters(APPLICATION_LIMITS.shortText),
       graduationYear: hints.wholeNumber(APPLICATION_LIMITS.graduationYear.min, APPLICATION_LIMITS.graduationYear.max),
@@ -47,10 +65,7 @@ describe("resolveFieldCopy hints", () => {
 
   it("generates judge hints from the config limits", () => {
     expect(hintsFor("judge")).toEqual({
-      preferredName: hints.maxCharacters(APPLICATION_LIMITS.preferredName),
-      location: hints.maxCharacters(APPLICATION_LIMITS.shortText),
-      bio: hints.maxCharacters(APPLICATION_LIMITS.bio),
-      links: hints.links(APPLICATION_LIMITS.links),
+      ...ABOUT_YOU_HINTS,
       company: hints.maxCharacters(APPLICATION_LIMITS.shortText),
       roleTitle: hints.maxCharacters(APPLICATION_LIMITS.shortText),
       yearsExperience: hints.wholeNumber(
@@ -75,8 +90,9 @@ describe("resolveFieldCopy hints", () => {
       { ...base, kind: "long_text" },
       { ...base, kind: "whole_number", min: 0 },
       { ...base, kind: "multi_choice", options: [] },
-      // A per-link maxLength must not turn a link list into a character-count hint.
-      { ...base, kind: "link_list", maxLength: 300 },
+      // A link's maxLength must not turn a profile link into a character-count hint.
+      { ...base, kind: "profile_link", maxLength: 300 },
+      { ...base, kind: "date", minDate: "1900-01-01", maxDate: "2026-09-20" },
       { ...base, kind: "single_choice", options: [] },
       { ...base, kind: "agreement" },
     ];
@@ -133,21 +149,21 @@ describe("copy overrides", () => {
     vi.doMock("@/content/copy", async (importOriginal) => ({
       ...(await importOriginal<Record<string, unknown>>()),
       FIELD_COPY: {
-        preferredName: { label: "Name to use", help: "Help prose for the name field." },
+        fullName: { label: "Name to use", help: "Help prose for the name field." },
         bio: { label: "   ", help: "" },
       },
       SECTION_COPY: { about: { intro: "Intro for the about section." }, education: { intro: " " } },
     }));
 
     const fields = await import("@/lib/view-models/fields");
-    const preferredName = fields.getFieldConfig("hacker", "preferredName");
+    const fullName = fields.getFieldConfig("hacker", "fullName");
     const bio = fields.getFieldConfig("hacker", "bio");
     const [about, education] = APPLICATION_FORMS.hacker.sections;
 
-    expect(preferredName && fields.resolveFieldCopy("hacker", preferredName)).toMatchObject({
+    expect(fullName && fields.resolveFieldCopy("hacker", fullName)).toMatchObject({
       label: "Name to use",
       help: "Help prose for the name field.",
-      hint: hints.maxCharacters(APPLICATION_LIMITS.preferredName),
+      hint: hints.maxCharacters(APPLICATION_LIMITS.shortText),
     });
     expect(bio && fields.resolveFieldCopy("hacker", bio)).toMatchObject({ label: "Short biography", help: null });
     expect(fields.resolveSectionCopy("hacker", about)).toEqual({

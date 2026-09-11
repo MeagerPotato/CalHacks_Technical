@@ -64,16 +64,22 @@ describe("applicant identity", () => {
 
   it("separates identifying answers from narrative answers", () => {
     const { identity, narrative } = splitIdentityResponses("judge", {
-      preferredName: "Test Judge",
+      fullName: "Test Judge",
+      birthdate: "1990-02-03",
+      countryOfResidence: "CA",
+      cityOfResidence: "Toronto",
       company: "Example Labs",
-      links: ["https://example.com"],
+      githubUrl: "https://github.com/test-judge",
       bio: "Engineer",
       roleTitle: "Staff Engineer",
     });
     expect(identity).toEqual({
-      preferredName: "Test Judge",
+      fullName: "Test Judge",
+      birthdate: "1990-02-03",
+      countryOfResidence: "CA",
+      cityOfResidence: "Toronto",
       company: "Example Labs",
-      links: ["https://example.com"],
+      githubUrl: "https://github.com/test-judge",
     });
     expect(narrative).toEqual({ bio: "Engineer", roleTitle: "Staff Engineer" });
   });

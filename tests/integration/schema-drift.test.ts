@@ -8,11 +8,12 @@ import {
   type ApplicationType,
 } from "@/lib/domain/enums";
 import {
+  COUNTRY_CODES,
   EXPERIENCE_LEVELS,
   HACKER_SKILLS,
-  HTTP_LINK_PATTERN_SOURCE,
   JUDGE_AVAILABILITY_BLOCKS,
   JUDGE_EXPERTISE_AREAS,
+  PROFILE_LINK_PATTERN_SOURCES,
   PROJECT_CATEGORIES,
   getApplicationDraftSchema,
   getApplicationFieldKeys,
@@ -32,7 +33,7 @@ const FIXTURES: Record<ApplicationType, Record<string, unknown>> = {
 
 interface FieldRule {
   field_key: string;
-  field_kind: "text" | "integer" | "choice" | "choices" | "links" | "accepted";
+  field_kind: "text" | "integer" | "date" | "choice" | "choices" | "profile_link" | "accepted";
   is_required: boolean;
   max_length: number | null;
   min_value: number | null;
@@ -54,47 +55,42 @@ const TRIMMED_WHITESPACE = String.fromCharCode(
 );
 /** Characters that look blank but trim() keeps. */
 const UNTRIMMED_BLANKS = [0x85, 0x180e, 0x200b].map((code) => String.fromCharCode(code));
+/** A digit outside ASCII (ARABIC-INDIC DIGIT ONE), which neither pattern treats as 0-9. */
+const NON_ASCII_DIGIT = String.fromCharCode(0x0661);
 
-const LINKS = [
-  "https://example.com",
-  "http://example.com/path?query=1#section",
-  "https://sub.example.co.uk/a/b",
-  "https://EXAMPLE.com",
-  "https://example.com:8080/x",
-  "https://example.com:65535",
-  "https://example.com:65536",
-  "https://example.com:0",
-  "https://example.com:080",
-  "https://localhost",
-  "https://localhost:3000",
-  "http://192.168.0.1",
+// Every profile link field is checked against every sample, so links for the other sites prove rejection too.
+const PROFILE_LINKS = [
+  "https://www.linkedin.com/in/maya-chen",
+  "https://linkedin.com/in/maya_chen/",
+  "http://uk.linkedin.com/in/maya%C3%A9",
+  "https://www.linkedin.com/in/ab",
+  `https://www.linkedin.com/in/${"a".repeat(100)}`,
+  `https://www.linkedin.com/in/${"a".repeat(101)}`,
+  "https://www.linkedin.com/company/example",
+  "https://WWW.linkedin.com/in/maya",
+  "https://github.com/maya",
+  "https://github.com/maya-chen/",
+  "https://www.github.com/m",
+  "https://github.com/-maya",
+  "https://github.com/maya-",
+  "https://github.com/maya--chen",
+  `https://github.com/${"a".repeat(39)}`,
+  `https://github.com/${"a".repeat(40)}`,
+  "https://github.com/maya/repo",
+  "https://gist.github.com/maya",
+  "https://github.com/maya?tab=repositories",
+  "https://devpost.com/maya_chen",
+  "https://devpost.com/software/project",
+  `https://devpost.com/${"a".repeat(60)}`,
+  `https://devpost.com/${"a".repeat(61)}`,
+  "ftp://github.com/maya",
   "javascript:alert(1)",
-  "data:text/html,hi",
-  "ftp://example.com",
-  "https://user@example.com",
-  "https://example.com@evil.example",
-  "https://exa mple.com",
-  "https://example.com/a b",
-  `https://example.com/${String.fromCharCode(0x7f)}`,
-  `https://example.com/caf${String.fromCharCode(0xe9)}`,
-  " https://example.com",
-  "https://example.com ",
-  "https://example.com.",
-  "https://-example.com",
-  "https://example-.com",
-  "https://example.c",
-  `https://example.${"a".repeat(63)}`,
-  `https://example.${"a".repeat(64)}`,
-  "http:example.com",
-  "https://",
-  `https://${"a".repeat(63)}.com`,
-  `https://${"a".repeat(64)}.com`,
-  `https://${"abcdefghi.".repeat(25)}com`, // 253-character host
-  `https://${"abcdefghi.".repeat(25)}comx`, // 254-character host
-  `https://example.com/${"p".repeat(280)}`, // 300 characters
-  `https://example.com/${"p".repeat(281)}`, // 301 characters
-  `https://example.com/${EMOJI.repeat(280)}`, // 300 code points, 580 UTF-16 units
-  `https://example.com/${EMOJI.repeat(281)}`, // 301 code points
+  "https://evil.example/github.com/maya",
+  " https://github.com/maya",
+  "https://github.com/maya ",
+  "https://github.com/maya\n",
+  `https://github.com/${EMOJI}`,
+  "",
 ];
 
 function textVariants(max: number): unknown[] {
@@ -125,8 +121,46 @@ function integerVariants(min: number, max: number): unknown[] {
   return [min, max, min - 1, max + 1, min + 0.5, String(min), null, true, [min], 1e300];
 }
 
+/** A YYYYMMDD bound as YYYY-MM-DD. */
+function isoDate(value: number): string {
+  const digits = String(value).padStart(8, "0");
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+}
+
+function dateVariants(min: number, max: number): unknown[] {
+  return [
+    isoDate(min),
+    isoDate(max),
+    isoDate(min - 1).replace(/-00$/, "-31").replace(/-01-31$/, "-12-31").replace(/^1900-12-31$/, "1899-12-31"),
+    isoDate(max + 1),
+    "2004-02-29",
+    "2005-02-29",
+    "2000-02-29",
+    "1900-02-29",
+    "2005-04-30",
+    "2005-04-31",
+    "2005-12-31",
+    "2005-13-01",
+    "2005-00-10",
+    "2005-01-00",
+    "0000-01-01",
+    "0050-06-15",
+    "2005-4-12",
+    " 2005-04-12",
+    "2005-04-12 ",
+    "2005-04-12T00:00:00Z",
+    "04/12/2005",
+    `2005-04-1${NON_ASCII_DIGIT}`,
+    "",
+    20050412,
+    null,
+    true,
+    ["2005-04-12"],
+  ];
+}
+
 function choiceVariants(options: string[]): unknown[] {
-  return [...options, "not_an_option", options[0].toUpperCase(), "", null, 1, [options[0]]];
+  return [...options, "not_an_option", options[0].toLowerCase(), options[0].toUpperCase(), "", null, 1, [options[0]]];
 }
 
 function choicesVariants(options: string[], maxItems: number): unknown[] {
@@ -144,20 +178,8 @@ function choicesVariants(options: string[], maxItems: number): unknown[] {
   ];
 }
 
-function linksVariants(maxItems: number): unknown[] {
-  return [
-    [],
-    ...LINKS.map((link) => [link]),
-    Array.from({ length: maxItems }, (_, index) => `https://example.com/${index}`),
-    Array.from({ length: maxItems + 1 }, (_, index) => `https://example.com/${index}`),
-    [EMOJI.repeat(300)],
-    [EMOJI.repeat(301)],
-    [`  ${"x".repeat(300)}  `],
-    [1],
-    [null],
-    "https://example.com",
-    null,
-  ];
+function profileLinkVariants(): unknown[] {
+  return [...PROFILE_LINKS, 42, true, null, ["https://github.com/maya"]];
 }
 
 function variantsFor(rule: FieldRule): unknown[] {
@@ -166,12 +188,14 @@ function variantsFor(rule: FieldRule): unknown[] {
       return textVariants(rule.max_length ?? 0);
     case "integer":
       return integerVariants(rule.min_value ?? 0, rule.max_value ?? 0);
+    case "date":
+      return dateVariants(rule.min_value ?? 0, rule.max_value ?? 0);
     case "choice":
       return choiceVariants(rule.options ?? []);
     case "choices":
       return choicesVariants(rule.options ?? [], rule.max_items ?? 0);
-    case "links":
-      return linksVariants(rule.max_items ?? 0);
+    case "profile_link":
+      return profileLinkVariants();
     case "accepted":
       return [true, false, "true", 1, null, [true]];
   }
@@ -180,6 +204,7 @@ function variantsFor(rule: FieldRule): unknown[] {
 // The parity checks below build choice variants from the SQL options, so an option added
 // only in TypeScript would go unnoticed without this exact comparison.
 const OPTION_LISTS: Record<string, readonly string[]> = {
+  countryOfResidence: COUNTRY_CODES,
   experienceLevel: EXPERIENCE_LEVELS,
   skills: HACKER_SKILLS,
   expertiseAreas: JUDGE_EXPERTISE_AREAS,
@@ -198,9 +223,21 @@ describe("SQL and TypeScript contracts stay in sync", () => {
     }
   });
 
-  it("uses the same link pattern in SQL and TypeScript", async () => {
-    const [row] = await queryRows<{ pattern: string }>("select private.http_link_pattern() as pattern");
-    expect(row.pattern).toBe(HTTP_LINK_PATTERN_SOURCE);
+  it("uses the same profile link patterns in SQL and TypeScript", async () => {
+    const rows = await queryRows<{ field_key: string; pattern: string | null }>(
+      `select k.field_key, private.profile_link_pattern(k.field_key) as pattern
+       from unnest($1::text[]) as k (field_key)`,
+      [[...Object.keys(PROFILE_LINK_PATTERN_SOURCES), "bio"]],
+    );
+    expect(Object.fromEntries(rows.map((row) => [row.field_key, row.pattern]))).toEqual({
+      ...PROFILE_LINK_PATTERN_SOURCES,
+      bio: null,
+    });
+  });
+
+  it("lists the same countries in SQL and TypeScript", async () => {
+    const [row] = await queryRows<{ codes: string[] }>("select private.country_codes() as codes");
+    expect(row.codes).toEqual([...COUNTRY_CODES]);
   });
 
   it.each(APPLICATION_TYPES)("the database accepts exactly the %s responses Zod accepts", async (type) => {
@@ -316,6 +353,19 @@ describe("seed data", () => {
       );
     }
   });
+
+  it("includes an account holding both a Hacker and a Judge application", async () => {
+    const rows = await queryRows<{ application_types: string[]; owned: string[] }>(
+      `select p.application_types::text[] as application_types,
+              array_agg(a.application_type::text order by a.application_type) as owned
+       from public.profiles p
+       join public.applications a on a.user_id = p.id
+       where p.id::text like 'a0000000-%'
+       group by p.id
+       having count(*) = 2`,
+    );
+    expect(rows).toEqual([{ application_types: ["hacker", "judge"], owned: ["hacker", "judge"] }]);
+  });
 });
 
 describe("database security posture", () => {
@@ -412,9 +462,12 @@ describe("database security posture", () => {
         // Called from RLS policies, CHECK constraints, and guard triggers.
         "private.application_field_rules",
         "private.application_responses_valid",
+        "private.application_types_valid",
+        "private.country_codes",
         "private.current_account_role",
-        "private.http_link_pattern",
+        "private.current_application_types",
         "private.is_organizer",
+        "private.profile_link_pattern",
         "private.rubric_dimensions",
         "private.trim_js_whitespace",
         // Organizer read RPCs; each refuses non-organizers itself.

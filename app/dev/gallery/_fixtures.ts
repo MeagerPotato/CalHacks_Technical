@@ -155,7 +155,7 @@ export const saveStatusViews = [
   selectSaveStatus({
     phase: "editing",
     saveStatus: "idle",
-    dirtyKeys: ["links"],
+    dirtyKeys: ["proudProject"],
     errors: invalidDraft.completion.fieldErrors,
   }),
   selectSaveStatus({ phase: "editing", saveStatus: "error", dirtyKeys: ["bio"], errors: {} }),

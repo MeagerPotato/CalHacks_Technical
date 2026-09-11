@@ -31,7 +31,7 @@ test("Organizers are kept out of the applicant portal", async ({ page }) => {
 test("applicants never see organizer pages or another applicant's answers", async ({ page }) => {
   const secretName = `Secret ${randomUUID().slice(0, 8)}`;
   const other = await createAccount("access-other", { role: "hacker" });
-  await seedApplication(other, "hacker", { ...validHackerResponses, preferredName: secretName }, { submit: true });
+  await seedApplication(other, "hacker", { ...validHackerResponses, fullName: secretName }, { submit: true });
 
   const user = await createAccount("access-user", { role: "hacker" });
   await seedApplication(user, "hacker", partialHackerResponses);

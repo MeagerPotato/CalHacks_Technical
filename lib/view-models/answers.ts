@@ -49,20 +49,34 @@ function optionLabel(field: ApplicationFieldConfig, value: string): string {
   return field.options?.find((option) => option.value === value)?.label ?? value;
 }
 
+// Calendar dates carry no time zone, so they are formatted in UTC and read the same on the server and in the browser.
+const CALENDAR_DATE_FORMAT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", dateStyle: "long" });
+
+function dateValue(stored: unknown): string | null {
+  const value = textValue(stored);
+  if (value === null || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)) {
+    return value;
+  }
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? value : CALENDAR_DATE_FORMAT.format(date);
+}
+
 function displayValue(field: ApplicationFieldConfig, stored: unknown): AnswerValue {
   switch (field.kind) {
     case "short_text":
     case "long_text":
     case "whole_number":
+    case "profile_link":
       return textValue(stored);
-    case "single_choice": {
+    case "date":
+      return dateValue(stored);
+    case "single_choice":
+    case "searchable_choice": {
       const value = textValue(stored);
       return value === null ? null : optionLabel(field, value);
     }
     case "multi_choice":
       return listValue(nonBlankStrings(stored).map((value) => optionLabel(field, value)));
-    case "link_list":
-      return listValue(nonBlankStrings(stored));
     case "agreement":
       // An agreement always has an answer to show: only a stored true counts as accepted.
       return stored === true ? COPY.review.agreementAccepted : COPY.review.agreementNotAccepted;

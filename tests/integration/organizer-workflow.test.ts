@@ -68,7 +68,7 @@ beforeAll(async () => {
   [hackerAppId, judgeAppId, draftAppId, blindAppId, queueAppId] = await Promise.all([
     createApplicationAs(hacker, "hacker", validHackerResponses, { submit: true }),
     createApplicationAs(judge, "judge", { ...validJudgeResponses, expertiseAreas: ["climate", "mobile"] }, { submit: true }),
-    createApplicationAs(drafter, "hacker", { preferredName: "Draft Only" }, { submit: false }),
+    createApplicationAs(drafter, "hacker", { fullName: "Draft Only" }, { submit: false }),
     createApplicationAs(blindApplicant, "hacker", validHackerResponses, { submit: true }),
     createApplicationAs(queued, "hacker", validHackerResponses, { submit: true }),
   ]);
@@ -159,7 +159,7 @@ describe("blind review workspace", () => {
       canReleaseDecision: false,
     });
     expect(blind?.application.applicantReference).toMatch(/^H-\d+$/);
-    for (const key of ["preferredName", "school", "links"]) {
+    for (const key of ["fullName", "birthdate", "countryOfResidence", "cityOfResidence", "githubUrl", "school"]) {
       expect(blind?.application.narrative).not.toHaveProperty(key);
     }
     expect(blind?.application.narrative).toMatchObject({
@@ -171,9 +171,12 @@ describe("blind review workspace", () => {
     expect(identity).toMatchObject({
       applicationId: blindAppId,
       email: blindApplicant.email,
-      preferredName: validHackerResponses.preferredName,
+      fullName: validHackerResponses.fullName,
+      birthdate: validHackerResponses.birthdate,
+      countryOfResidence: validHackerResponses.countryOfResidence,
+      cityOfResidence: validHackerResponses.cityOfResidence,
       affiliation: validHackerResponses.school,
-      links: validHackerResponses.links,
+      links: [validHackerResponses.githubUrl],
     });
 
     const revealed = await getReviewWorkspace(blindAppId, { revealIdentity: true });
@@ -406,7 +409,7 @@ describe("organizer writes through the Data API", () => {
 
     const tamper = await client
       .from("applications")
-      .update({ responses: { preferredName: "Tampered" } })
+      .update({ responses: { fullName: "Tampered" } })
       .eq("id", blindAppId)
       .select("id");
     expect(tamper.error?.code).toBe("42501");
@@ -418,10 +421,10 @@ describe("organizer writes through the Data API", () => {
     expect(backToDraft.error).not.toBeNull();
 
     const [row] = await queryRows<{ status: string; name: string }>(
-      "select status::text as status, responses ->> 'preferredName' as name from public.applications where id = $1",
+      "select status::text as status, responses ->> 'fullName' as name from public.applications where id = $1",
       [blindAppId],
     );
-    expect(row).toEqual({ status: "submitted", name: validHackerResponses.preferredName });
+    expect(row).toEqual({ status: "submitted", name: validHackerResponses.fullName });
   });
 
   it("cannot promote an account that already owns an application", async () => {

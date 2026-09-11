@@ -71,7 +71,7 @@ test.describe("Judge application on a small screen", () => {
     await seedApplication(user, "judge", {});
     await signInViaUi(page, user, "/portal/application?section=about");
 
-    await expect(page.getByLabel(fieldLabel("judge", "preferredName"))).toBeVisible();
+    await expect(page.getByLabel(fieldLabel("judge", "fullName"))).toBeVisible();
     await expect(page.getByText(fieldLabel("hacker", "school"), { exact: true })).toHaveCount(0);
     await expect(page.getByRole("progressbar")).toBeVisible();
 

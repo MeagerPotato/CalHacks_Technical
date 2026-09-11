@@ -27,13 +27,13 @@ test.describe("Hacker application journey", () => {
   });
 
   test("saves a draft answer that survives a reload", async ({ page }) => {
-    await page.getByLabel(fieldLabel("hacker", "preferredName")).fill("Ada Builder");
+    await page.getByLabel(fieldLabel("hacker", "fullName")).fill("Ada Builder");
     await page.getByRole("button", { name: LOCKED.editor.saveDraft }).click();
 
     await expect(editorLiveStatus(page)).toContainText(COPY.editor.announce.saved);
     await expect(page.getByTestId("save-status")).toHaveAttribute("data-state", "saved");
     await page.reload();
-    await expect(page.getByLabel(fieldLabel("hacker", "preferredName"))).toHaveValue("Ada Builder");
+    await expect(page.getByLabel(fieldLabel("hacker", "fullName"))).toHaveValue("Ada Builder");
   });
 
   test("Save & continue moves to the next section and focuses its heading", async ({ page }) => {

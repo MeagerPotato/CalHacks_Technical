@@ -10,7 +10,7 @@ import type {
   ReviewQueueProgress,
   ReviewRecord,
 } from "@/lib/data/types";
-import { isHttpLink, parseStoredResponses } from "@/lib/validation/application";
+import { PROFILE_LINK_KEYS, isProfileLink, parseStoredResponses } from "@/lib/validation/application";
 import { calculateApplicationCompletion } from "@/lib/validation/completion";
 import type { Database } from "@/types/database";
 
@@ -142,19 +142,25 @@ export function toApplicantIdentity(
   profile: { display_name: string | null; email: string } | null,
 ): ApplicantIdentity {
   const responses = parseStoredResponses(row.application_type, row.responses) as Record<string, unknown>;
-  const affiliationKey = row.application_type === "hacker" ? "school" : "company";
-  const affiliation = responses[affiliationKey];
-  const preferredName = responses.preferredName;
-  const links = responses.links;
+  const presentText = (key: string) => {
+    const value = responses[key];
+    return typeof value === "string" && value.trim().length > 0 ? value : null;
+  };
 
   return {
     applicationId: row.id,
     displayName: profile?.display_name ?? null,
     email: profile?.email ?? "",
-    preferredName: typeof preferredName === "string" ? preferredName : null,
-    affiliation: typeof affiliation === "string" && affiliation.length > 0 ? affiliation : null,
-    // Draft links can be any text, so only links that are safe to render as hrefs are returned.
-    links: Array.isArray(links) ? links.filter(isHttpLink) : [],
+    fullName: presentText("fullName"),
+    birthdate: presentText("birthdate"),
+    countryOfResidence: presentText("countryOfResidence"),
+    cityOfResidence: presentText("cityOfResidence"),
+    affiliation: presentText(row.application_type === "hacker" ? "school" : "company"),
+    // Only links that pass their profile pattern are returned, so every link is safe to render as an href.
+    links: PROFILE_LINK_KEYS.flatMap((key) => {
+      const value = responses[key];
+      return isProfileLink(key, value) ? [value] : [];
+    }),
   };
 }
 

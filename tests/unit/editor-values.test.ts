@@ -91,14 +91,16 @@ describe("toUiValues", () => {
   it("converts stored answers per kind", () => {
     const values = toUiValues("hacker", {
       ...validHackerResponses,
-      links: ["https://example.com/one", "https://example.com/two"],
       previousHackathonCount: 0,
     });
 
     expect(values).toMatchObject({
-      preferredName: "Test Hacker",
+      fullName: "Test Hacker",
+      birthdate: "2005-04-12",
+      countryOfResidence: "US",
+      githubUrl: "https://github.com/test-hacker",
+      linkedinUrl: "",
       bio: validHackerResponses.bio,
-      links: "https://example.com/one\nhttps://example.com/two",
       graduationYear: "2027",
       previousHackathonCount: "0",
       experienceLevel: "intermediate",
@@ -111,12 +113,20 @@ describe("toUiValues", () => {
     expect(
       toUiValues("hacker", {
         bio: 42,
+        birthdate: 20050412,
+        countryOfResidence: ["US"],
         graduationYear: "2027",
         skills: "web",
-        links: "https://example.com",
         codeOfConductAccepted: "true",
       }),
-    ).toMatchObject({ bio: "", graduationYear: "", skills: [], links: "", codeOfConductAccepted: false });
+    ).toMatchObject({
+      bio: "",
+      birthdate: "",
+      countryOfResidence: "",
+      graduationYear: "",
+      skills: [],
+      codeOfConductAccepted: false,
+    });
   });
 
   it("copies arrays so editing values never changes the saved responses", () => {
@@ -170,10 +180,27 @@ describe("toPayloadValue", () => {
     expect(validateDraftValue("hacker", "previousHackathonCount", toPayloadValue(hackathons, "0012"))).toEqual([]);
   });
 
-  it("clears an empty single choice", () => {
+  it("clears an empty single or searchable choice", () => {
     const level = fieldFor("hacker", "experienceLevel");
     expect(toPayloadValue(level, "")).toBeNull();
     expect(toPayloadValue(level, "beginner")).toBe("beginner");
+
+    const country = fieldFor("judge", "countryOfResidence");
+    expect(toPayloadValue(country, "")).toBeNull();
+    expect(toPayloadValue(country, "CA")).toBe("CA");
+  });
+
+  it("trims dates and profile links and clears blank ones", () => {
+    const birthdate = fieldFor("hacker", "birthdate");
+    expect(toPayloadValue(birthdate, "2005-04-12")).toBe("2005-04-12");
+    expect(toPayloadValue(birthdate, "")).toBeNull();
+
+    const github = fieldFor("judge", "githubUrl");
+    expect(toPayloadValue(github, "  https://github.com/maya  ")).toBe("https://github.com/maya");
+    expect(toPayloadValue(github, "   ")).toBeNull();
+    expect(validateDraftValue("judge", "githubUrl", toPayloadValue(github, "https://example.com/maya"))).toEqual([
+      "Enter a GitHub profile link, like https://github.com/your-username",
+    ]);
   });
 
   it("dedupes multi-choice values in option order and keeps unknown values for validation", () => {
@@ -184,16 +211,6 @@ describe("toPayloadValue", () => {
     const tampered = toPayloadValue(skills, ["cooking", "web", "cooking", "juggling"]);
     expect(tampered).toEqual(["web", "cooking", "juggling"]);
     expect(validateDraftValue("hacker", "skills", tampered)).toEqual(["Choose from the listed options."]);
-  });
-
-  it("splits link lists on CRLF or LF, trims lines, and drops blank lines", () => {
-    const links = fieldFor("judge", "links");
-    expect(toPayloadValue(links, "https://example.com/one\r\n\r\n   https://example.com/two  \n\n")).toEqual([
-      "https://example.com/one",
-      "https://example.com/two",
-    ]);
-    expect(toPayloadValue(links, " \r\n\n  ")).toBeNull();
-    expect(toPayloadValue(links, "")).toBeNull();
   });
 
   it("sends an accepted agreement and clears an unchecked one", () => {
@@ -277,7 +294,7 @@ describe("buildDraftPatch", () => {
     const values: UiValues = deepFreeze({
       ...baseline,
       bio: "",
-      links: "https://example.com/test-hacker\r\n\r\n",
+      githubUrl: "https://github.com/test-hacker  ",
       school: "  New School  ",
       major: "Computer Science   ",
       graduationYear: "20.5",

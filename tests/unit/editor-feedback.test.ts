@@ -170,17 +170,17 @@ describe("toSummaryItems", () => {
         notAField: ["Ignored."],
         graduationYear: ["Enter a whole number from 2000 to 2040.", "A second message."],
         school: [],
-        preferredName: ["This field is required."],
+        fullName: ["This field is required."],
       },
       stepHref("hacker"),
     );
 
     expect(items).toEqual([
       {
-        key: "preferredName",
-        label: labelFor("hacker", "preferredName"),
+        key: "fullName",
+        label: labelFor("hacker", "fullName"),
         message: "This field is required.",
-        href: "/portal/application?section=about#field-preferredName",
+        href: "/portal/application?section=about#field-fullName",
       },
       {
         key: "graduationYear",
@@ -203,10 +203,10 @@ describe("toSummaryItems", () => {
 
     expect(items.map((item) => item.key)).toEqual(getRequiredApplicationFieldKeys("judge"));
     expect(items[0]).toEqual({
-      key: "preferredName",
-      label: labelFor("judge", "preferredName"),
+      key: "fullName",
+      label: labelFor("judge", "fullName"),
       message: "This field is required.",
-      href: "#field-preferredName",
+      href: "#field-fullName",
     });
   });
 

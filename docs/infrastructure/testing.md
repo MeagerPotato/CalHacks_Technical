@@ -22,7 +22,7 @@ Pure TypeScript tests with no network or database:
 
 | File | Covers |
 |---|---|
-| `application-validation.test.ts` | Hacker and Judge submission and draft schemas, limits, the link rule and `isHttpLink`, and the draft merge rules. |
+| `application-validation.test.ts` | Hacker and Judge submission and draft schemas, limits, the shared About you section (real calendar birthdates within range, country codes, and the LinkedIn, GitHub, and Devpost patterns in `isProfileLink`), and the draft merge rules. |
 | `completion.test.ts` | Completion percentage, section status, and missing or invalid fields. |
 | `review-validation.test.ts` | Rubric draft and submission schemas, and the overall score. |
 | `mission.test.ts` | Mission stages and legs for every status. |
@@ -59,10 +59,11 @@ These run the real Server Actions and data-access functions against local Supaba
 
 `schema-drift.test.ts` keeps SQL and TypeScript in sync and pins the security posture:
 
-- The response field keys and required keys in `private.application_field_rules` match the Zod schemas, its option lists match the TypeScript option constants exactly (including order), and `private.http_link_pattern()` is character-for-character identical to `HTTP_LINK_PATTERN_SOURCE`.
-- `private.application_responses_valid` agrees with the Zod draft and submission schemas on boundary values for every field: lengths counted in Unicode code points (including emoji), JavaScript whitespace trimming, option lists, duplicates, item counts, integer ranges, JSON types, nulls, and a wide set of valid and invalid links. Unknown keys are rejected.
+- The response field keys and required keys in `private.application_field_rules` match the Zod schemas, and its option lists match the TypeScript option constants exactly, including order. That covers the 250 country codes: `private.country_codes()` equals `COUNTRY_CODES` from `lib/countries.ts`.
+- `private.profile_link_pattern(key)` is character-for-character identical to `PROFILE_LINK_PATTERN_SOURCES[key]` for every profile link field, and null for every other field.
+- `private.application_responses_valid` agrees with the Zod draft and submission schemas on boundary values for every field: lengths counted in Unicode code points (including emoji), JavaScript whitespace trimming, option lists, duplicates, item counts, integer ranges, calendar dates (including February 29 and impossible days) and the birthdate range, JSON types, nulls, and a wide set of valid and invalid profile links. Unknown keys are rejected.
 - Rubric dimensions and enum values match the TypeScript constants.
-- Seed data satisfies the TypeScript completion and validation rules.
+- Seed data satisfies the TypeScript completion and validation rules, and exactly one seed account owns both a Hacker and a Judge application.
 - RLS is enabled on every table.
 - `anon` has no access to tables, functions, or sequences.
 - `authenticated` has exactly the intended column grants and executable functions.

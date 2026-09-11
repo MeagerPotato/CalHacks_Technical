@@ -19,7 +19,10 @@ export interface TextInputProps {
   onValueChange?: (value: string) => void;
   multiline?: boolean;
   rows?: number;
-  type?: "text" | "email" | "password";
+  type?: "text" | "email" | "password" | "date" | "url";
+  /** Earliest and latest values for `type="date"` (YYYY-MM-DD). */
+  min?: string;
+  max?: string;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   autoComplete?: string;
   describedBy?: string;
@@ -40,6 +43,8 @@ export function TextInput({
   multiline = false,
   rows = 5,
   type = "text",
+  min,
+  max,
   inputMode,
   autoComplete,
   describedBy,
@@ -73,5 +78,5 @@ export function TextInput({
     // The ref prop accepts either element type; each branch narrows it to the element it renders.
     return <textarea {...shared} ref={ref as Ref<HTMLTextAreaElement>} rows={rows} />;
   }
-  return <input {...shared} ref={ref as Ref<HTMLInputElement>} type={type} inputMode={inputMode} />;
+  return <input {...shared} ref={ref as Ref<HTMLInputElement>} type={type} min={min} max={max} inputMode={inputMode} />;
 }

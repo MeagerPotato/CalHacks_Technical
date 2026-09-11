@@ -74,6 +74,7 @@ export const COPY = {
     skipToContent: "Skip to main content",
     loading: "Loading…",
     optional: "(optional)",
+    required: "(required)",
     opensInNewTab: "(opens in a new tab)",
     errorPrefix: "Error:",
   },
@@ -210,10 +211,15 @@ export const COPY = {
     characterCount: (count: number, max: number) => `${count} of ${max} characters`,
     hints: {
       wholeNumber: (min: number, max: number) => `Enter a whole number from ${min} to ${max}.`,
-      links: (maxItems: number) =>
-        `One link per line, up to ${maxItems}. Start each link with http:// or https://.`,
       chooseUpTo: (maxItems: number) => `Choose up to ${maxItems}.`,
       maxCharacters: (maxLength: number) => `Up to ${maxLength} characters.`,
+      profileLink: (example: string) => `Paste the full link to your profile, like ${example}`,
+      searchableChoice: "Start typing to filter the list, then choose an option.",
+    },
+    requiredLegend: "Questions marked with an asterisk (*) are required.",
+    combobox: {
+      showOptions: "Show options",
+      noResults: "No matches. Check the spelling or clear the text to see every option.",
     },
     saveStatus: {
       saved: "All changes saved",

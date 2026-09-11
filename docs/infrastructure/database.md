@@ -11,6 +11,8 @@ The schema lives in `supabase/migrations`. Migrations apply in filename order: l
 | `20260910220200_workflow_guards.sql` | Adds `private.is_organizer()` and `private.current_account_role()`, the application state-machine guard, and the review guard (rubric validation, overall score, completion lock). Also adds the trigger that moves an application into review when its first review is saved. |
 | `20260910220300_rls_and_privileges.sql` | Table and column grants for `authenticated`, function grants for the private helpers, and every RLS policy. |
 | `20260910220400_organizer_read_functions.sql` | Organizer-only read functions for the dashboard, filtered listing, and the review queue. |
+| `20260911090000_round2_about_you.sql` | Gives both forms the shared About you section, which replaces preferred name, location, and relevant links. The section holds full name, birthdate, country and city of residence, optional LinkedIn, GitHub, and Devpost profile links, and an optional biography. Adds the `date` and `profile_link` field kinds, `private.country_codes()`, and `private.profile_link_pattern(key)`, and drops `private.http_link_pattern()`. Existing drafts keep their preferred name as the full name and their location as the city, and their links are dropped. The migration refuses to run while any submitted application exists. The organizer list now reads the applicant name from `fullName`. |
+| `20260911090100_round2_dual_applications.sql` | Lets one account hold a Hacker and a Judge application. Adds `profiles.application_types`, reads `application_types` from signup metadata, replaces the one-per-account constraint with `applications_one_per_type`, and lets applicants insert a draft of any type their account applies for (`private.current_application_types()`). |
 
 ## Enums
 
@@ -30,7 +32,8 @@ The schema lives in `supabase/migrations`. Migrations apply in filename order: l
 | `id` | Primary key; references `auth.users` (cascade delete). |
 | `email` | Copied from `auth.users` by trigger so organizers can search. Clients cannot write it. |
 | `display_name` | 1–80 characters or null. This is the only column a client may edit. |
-| `account_role` | `hacker` or `judge` from signup; `organizer` only through admin SQL. |
+| `account_role` | `organizer` only through admin SQL. Otherwise the first of `application_types`, so an account that applies for both is `hacker`. |
+| `application_types` | The applications the account applies for, chosen at signup: `{hacker}`, `{judge}`, or `{hacker,judge}`, always in that order. Empty for organizers. Clients cannot write it. CHECK `profiles_application_types_valid` (`private.application_types_valid`) keeps it consistent with `account_role`. |
 | `created_at`, `updated_at` | Maintained by the database. |
 
 ### `applications`
@@ -39,8 +42,8 @@ The schema lives in `supabase/migrations`. Migrations apply in filename order: l
 |---|---|
 | `id` | UUID primary key. |
 | `reference_number` | Identity starting at 1001, unique. Used for non-identifying labels such as `H-1042`. |
-| `user_id` | References `profiles` (cascade delete). Unique, so each account has at most one application. |
-| `application_type` | Must equal the owner's `account_role`. |
+| `user_id` | References `profiles` (cascade delete). Unique together with `application_type` (`applications_one_per_type`), so an account holds at most one Hacker and one Judge application. |
+| `application_type` | Must be one of the owner's `application_types`. |
 | `responses` | JSON object of at most 32 KB. CHECK constraints enforce the draft or submission contract of `lib/validation/application.ts` (see [Response validation](#response-validation)). |
 | `completion_percent` | 0–100. The server computes it for drafts; it is always 100 once submitted. |
 | `status` | Defaults to `draft`. |
@@ -86,20 +89,21 @@ The database enforces the Zod response contract, plus the stricter cases listed 
 
 | Function | Purpose |
 |---|---|
-| `private.application_field_rules(type)` | One row per response field: its kind (`text`, `integer`, `choice`, `choices`, `links`, `accepted`), whether it is required, and its length, range, item-count, and option limits. |
+| `private.application_field_rules(type)` | One row per response field: its kind (`text`, `integer`, `date`, `choice`, `choices`, `profile_link`, `accepted`), whether it is required, and its length, range, item-count, and option limits. Date bounds are `YYYYMMDD` integers. |
 | `private.application_responses_valid(type, responses, submitted)` | Checks responses against the draft rules (`submitted = false`) or the submission rules (`submitted = true`). Used by both CHECK constraints. |
 | `private.trim_js_whitespace(text)` | Trims exactly the characters JavaScript's `trim()` removes, so blank checks and length limits match Zod. Lengths are then measured with `char_length`, which counts Unicode code points exactly as Zod 4 does. |
-| `private.http_link_pattern()` | The link pattern for submitted applications. It is identical to `HTTP_LINK_PATTERN_SOURCE` in TypeScript. |
+| `private.country_codes()` | The ISO 3166-1 alpha-2 codes allowed for `countryOfResidence`, in the order of `COUNTRY_CODES` in TypeScript (United States first). |
+| `private.profile_link_pattern(field_key)` | The pattern for `linkedinUrl`, `githubUrl`, or `devpostUrl`, and null for any other key. Each is identical to `PROFILE_LINK_PATTERN_SOURCES[field_key]` in TypeScript. |
 
-- **Draft rules.** Any answer may be missing or null. A present answer must have the right JSON type, use allowed option values without duplicates, and stay within the length, range, and item limits. Draft links may be any text up to 300 characters.
-- **Submission rules.** Every required answer must be present: non-blank text, a non-empty choice list, and an accepted code of conduct. Optional answers are omitted rather than null, and every link must match the link pattern.
+- **Draft rules.** Any answer may be missing or null. A present answer must have the right JSON type, use allowed option values without duplicates, and stay within the length, range, and item limits. A birthdate must be a real `YYYY-MM-DD` calendar date within its range, a country must come from `private.country_codes()`, and a profile link must match its pattern, even in a draft.
+- **Submission rules.** Every required answer must be present: non-blank text, a non-empty choice list, and an accepted code of conduct. Optional answers are omitted rather than null.
 - **Stricter than Zod.**
   - Unknown keys are always rejected. Zod strips them, and the Server Actions never write them.
   - Text containing a NUL character (U+0000) cannot be stored in `jsonb` at all (SQLSTATE `22P05`).
   - `applications_responses_size` caps `responses` at 32 KB of JSON text. Answers within the field limits reach that only when they are full of control characters.
   - The Server Actions return `validation_failed` without field details for the last two.
 
-`tests/integration/schema-drift.test.ts` checks that the field keys, required flags, option lists, and link pattern are identical in SQL and TypeScript. It then compares the database with Zod on boundary values for every field in both modes, and fails on any disagreement. When changing a field, limit, or option, update `lib/validation/application.ts` and `private.application_field_rules` together.
+`tests/integration/schema-drift.test.ts` checks that the field keys, required flags, option lists (including the country codes), and profile link patterns are identical in SQL and TypeScript. It then compares the database with Zod on boundary values for every field in both modes, and fails on any disagreement. When changing a field, limit, or option, update `lib/validation/application.ts` and `private.application_field_rules` together.
 
 ## Workflow state machine
 
@@ -111,7 +115,7 @@ in_review ──organizer releases (completed review needed)▶ accepted | waitl
 
 `private.guard_application_write` enforces these rules for client requests, i.e. those made as the `anon` or `authenticated` role:
 
-- **Applicants** may insert only their own draft, whose type must equal their role. They may update the application only while it is a draft, and may keep it as a draft or submit it. Submitted applications cannot be edited or unsubmitted.
+- **Applicants** may insert only their own draft, of a type their account applies for (`application_types`). They may update the application only while it is a draft, and may keep it as a draft or submit it. Submitted applications cannot be edited or unsubmitted.
 - **Organizers** cannot change `responses`, `completion_percent`, or `launched_at`. They may move an application from `submitted` to `in_review`. They may release `accepted` or `waitlisted` only when a completed review exists. Released decisions are final.
 - **Timestamps** are always set by the database. Clients have no grant to write them.
 
@@ -141,7 +145,7 @@ Every client write must pass three independent layers. Server Actions also authe
 
 Clients have no `DELETE` or `TRUNCATE` privileges and no sequence privileges.
 
-`authenticated` can execute the five organizer read functions and these private helpers, because CHECK constraints, policies, and `SECURITY INVOKER` functions call them with the caller's privileges: `application_field_rules`, `application_responses_valid`, `trim_js_whitespace`, `http_link_pattern`, `rubric_dimensions`, `is_organizer`, and `current_account_role`. The `private` schema is not exposed through the Data API.
+`authenticated` can execute the five organizer read functions and these private helpers, because CHECK constraints, policies, and `SECURITY INVOKER` functions call them with the caller's privileges: `application_field_rules`, `application_responses_valid`, `trim_js_whitespace`, `country_codes`, `profile_link_pattern`, `rubric_dimensions`, `is_organizer`, `current_account_role`, `current_application_types`, and `application_types_valid`. The `private` schema is not exposed through the Data API.
 
 ### 2. Row Level Security
 
@@ -150,7 +154,7 @@ Clients have no `DELETE` or `TRUNCATE` privileges and no sequence privileges.
 | `profiles_select_own_or_organizer` | Own profile; organizers can read all profiles. |
 | `profiles_update_own` | Own profile only. |
 | `applications_select_own_or_organizer` | Own application; organizers can read all applications. |
-| `applications_insert_own_draft` | `user_id` is the caller, `status` is `draft`, and the type equals the caller's role. |
+| `applications_insert_own_draft` | `user_id` is the caller, `status` is `draft`, and the type is one of the caller's `application_types`. |
 | `applications_update_own_draft_or_organizer_workflow` | Applicant branch: own row that is currently a draft, and the new status is `draft` or `submitted`. Organizer branch: a `submitted` or `in_review` row, and the new status is `in_review`, `accepted`, or `waitlisted`. |
 | `reviews_select_organizer` | Organizers only. Applicants cannot read any review, including reviews of their own application. |
 | `reviews_insert_own_as_organizer` | Organizer, and `reviewer_id` is the caller. |
@@ -160,17 +164,19 @@ Clients have no `DELETE` or `TRUNCATE` privileges and no sequence privileges.
 
 These are the guard functions described in the workflow section. All three are `SECURITY INVOKER`, so they see the caller's role and session.
 
-`private.is_organizer()` and `private.current_account_role()` are `SECURITY DEFINER` so policies can read `profiles` without recursion. They live in `private`, which the Data API does not expose. EXECUTE is granted to `authenticated` and `service_role`, never to `anon`. Every function pins `search_path = ''`.
+`private.is_organizer()`, `private.current_account_role()`, and `private.current_application_types()` are `SECURITY DEFINER` so policies can read `profiles` without recursion. They live in `private`, which the Data API does not expose. EXECUTE is granted to `authenticated` and `service_role`, never to `anon`. Every function pins `search_path = ''`.
 
-### Signup and roles
+### Signup, roles, and application types
 
-`private.handle_new_auth_user` reads `raw_user_meta_data.account_role` exactly once, when the auth user is created. Matching ignores case and leading or trailing spaces. Other whitespace, such as a tab, is not trimmed, so such a value is rejected.
+`private.handle_new_auth_user` reads `raw_user_meta_data` exactly once, when the auth user is created.
 
-- A blank or missing value becomes `hacker`.
-- `hacker` and `judge` are accepted.
-- Anything else, including `organizer`, raises an error and aborts the signup. Supabase Auth then returns HTTP 500 "Database error saving new user", and no user row is created.
+- **`application_types`** is a JSON array of one or two distinct strings, each exactly `hacker` or `judge`. The profile stores them in enum order (`hacker` before `judge`), and `account_role` becomes the first. Anything else raises hint `invalid_application_types` and aborts the signup. That includes `organizer`, a duplicate, an empty array, or a value that is not an array.
+- **`account_role`** is the older single-type request. It is used only when `application_types` is missing or null. Matching ignores case and leading or trailing spaces; other whitespace, such as a tab, is not trimmed, so such a value is rejected. A non-blank value other than `hacker` or `judge` raises hint `invalid_account_role` and aborts the signup, even when `application_types` is also sent.
+- With neither, the account applies as a Hacker.
 
-After signup, user metadata is never read again; `profiles.account_role` is the only source of truth. Users can edit their own metadata with `auth.updateUser`, but that has no effect on their role.
+When a signup is aborted, Supabase Auth returns HTTP 500 "Database error saving new user" and creates no user row.
+
+After signup, user metadata is never read again; `profiles.account_role` and `profiles.application_types` are the only source of truth. Users can edit their own metadata with `auth.updateUser`, but that has no effect on either column. An admin change to either must still include the type of every application the account owns (hint `role_application_mismatch`).
 
 ## Organizer read functions
 
@@ -187,7 +193,7 @@ All five functions are `SECURITY INVOKER`. EXECUTE is revoked from `PUBLIC` and 
 `list_review_applications` details:
 
 - Drafts are excluded unless `p_status = 'draft'`.
-- Search is a case-insensitive substring match with escaped wildcards. It covers preferred name, display name, email, school, company, and `H-`/`J-` reference numbers.
+- Search is a case-insensitive substring match with escaped wildcards. It covers full name, display name, email, school, company, and `H-`/`J-` reference numbers.
 - `p_review_state` is `reviewed` (has a completed review) or `unreviewed`.
 - `p_sort` is `submitted_desc`, `submitted_asc`, `score_desc`, or `score_asc`.
 - The limit is clamped to 1–200. `p_offset` is an `integer`.
@@ -204,7 +210,7 @@ The guards and functions raise stable `HINT` values. `lib/actions/errors.ts` map
 
 | Hint | Action error code |
 |---|---|
-| `forbidden`, `invalid_account_role`, `role_application_mismatch` | `forbidden` |
+| `forbidden`, `invalid_account_role`, `invalid_application_types`, `role_application_mismatch` | `forbidden` |
 | `not_found` | `not_found` |
 | `application_type_mismatch` | `application_type_mismatch` |
 | `application_locked` | `application_locked` |
@@ -230,9 +236,9 @@ Violations without a hint are mapped by constraint name or SQLSTATE:
 
 `supabase/seed.sql` runs locally the first time `npm run db:start` creates the database and on every `npm run db:reset`. It contains no passwords, and every row satisfies the response validation constraints.
 
-- **Auth users:** 14 users at `@example.com`, all without passwords, so none can sign in. There are 7 Hackers, 6 Judges, and 1 Organizer (`seed.reviewer@example.com`, promoted with `private.promote_to_organizer`).
-- **Applications:** 13 in total.
-  - Hackers: 2 draft, 3 submitted, 1 in review, 1 accepted.
+- **Auth users:** 14 users at `@example.com`, all without passwords, so none can sign in. 7 apply only as Hackers, 5 only as Judges, and 1 as both (`a0000000-0000-4000-8000-000000000013`). There is also 1 Organizer (`seed.reviewer@example.com`, promoted with `private.promote_to_organizer`).
+- **Applications:** 14 in total. The account that applies for both owns one of each type.
+  - Hackers: 3 draft, 3 submitted, 1 in review, 1 accepted.
   - Judges: 1 draft, 4 submitted, 1 waitlisted.
 - **Reviews:** 3 completed reviews, on the in-review, accepted, and waitlisted applications.
 - **Judge expertise** (non-draft Judges, meaning the 4 submitted and the 1 waitlisted, as counted by `get_judge_expertise_counts`):
@@ -251,8 +257,11 @@ Run these as `postgres`: in the Supabase SQL editor, in local Studio at http://1
 -- register any address, so never promote an account that already existed. It must not own an application.
 select private.promote_to_organizer('organizer@example.org');
 
--- Return an Organizer to an applicant role.
-update public.profiles set account_role = 'hacker' where email = 'organizer@example.org';
+-- Return an Organizer to an applicant role. account_role must be the first application type.
+update public.profiles set account_role = 'hacker', application_types = '{hacker}' where email = 'organizer@example.org';
+
+-- Let an applicant apply for both types. Every application they already own must stay covered.
+update public.profiles set account_role = 'hacker', application_types = '{hacker,judge}' where email = 'applicant@example.org';
 
 -- Before deleting an Organizer who wrote reviews (reviews.reviewer_id is ON DELETE RESTRICT):
 delete from public.reviews
@@ -260,4 +269,4 @@ where reviewer_id = (select id from public.profiles where email = 'organizer@exa
 -- Then delete the user in Authentication > Users.
 ```
 
-Trusted roles (`postgres`, `service_role`) skip the client-only checks: ownership, the organizer requirement, application status transitions, and the review lock after a decision. They must still satisfy every CHECK constraint and the guard rules that apply to all writers: immutable identifiers, an application type that matches the owner's role, valid rubric scores, complete reviews on completion, and completed reviews that cannot return to draft. Do not add `SECURITY DEFINER` functions or RPCs that write `applications` or `reviews`, because they would run with those trusted privileges.
+Trusted roles (`postgres`, `service_role`) skip the client-only checks: ownership, the organizer requirement, application status transitions, and the review lock after a decision. They must still satisfy every CHECK constraint and the guard rules that apply to all writers: immutable identifiers, an application type the owner applies for, valid rubric scores, complete reviews on completion, and completed reviews that cannot return to draft. Do not add `SECURITY DEFINER` functions or RPCs that write `applications` or `reviews`, because they would run with those trusted privileges.
