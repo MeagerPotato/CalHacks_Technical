@@ -1,5 +1,7 @@
 # Prompt for Astra
 
+> Astra ran this prompt on 2026-09-11. What it changed is in [astra-handoff.md](astra-handoff.md#final-pass-results).
+
 Paste everything below the line into Astra, working in this repository on the `astra-final-pass` branch.
 
 ---

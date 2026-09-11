@@ -39,7 +39,7 @@ export function CountdownPanel({
       className="relative flex flex-col gap-5 overflow-hidden rounded-card border-2 border-border bg-dark p-5 text-on-dark shadow-card sm:p-6"
     >
       <span aria-hidden="true" className="absolute -top-10 -right-10 size-32 rounded-full border-2 border-accent opacity-30" />
-      <span aria-hidden="true" className="absolute top-12 right-20 size-2 rounded-full bg-highlight" />
+      <span aria-hidden="true" className="absolute top-12 right-20 hidden size-2 rounded-full bg-highlight sm:block" />
       <div className="relative flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Sticker name="antenna" />

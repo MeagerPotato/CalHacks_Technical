@@ -1,6 +1,6 @@
 # Astra handoff: final creative pass
 
-> **Status:** Round 2 shipped on 2026-09-11. This final pass is short polish; start with [Final pass tasks](#final-pass-tasks-in-priority-order).
+> **Status:** Round 2 and your final creative pass shipped on 2026-09-11. [Final pass results](#final-pass-results) records what changed. A later pass starts with a new task list there.
 
 The product works end to end:
 
@@ -11,7 +11,7 @@ The product works end to end:
 - the landing page, with the Cal Hacks 13.0 mission timeline and live countdowns;
 - the organizer pages: the Mission Control dashboard, the applications table, and the blind review workspace.
 
-Your first two passes set the brand, art, and motion, and designed the round 2 surfaces. This final pass polishes what is left, within the same creative-only scope:
+Your passes set the brand, art, and motion, designed the round 2 surfaces, and polished them. Any further design work stays within the same creative-only scope:
 
 1. **Art.** Original illustrations in `components/art/`, plus decorative `aria-hidden` accents inside views.
 2. **Motion.** Choreography beyond the baseline, following the motion rules below.
@@ -56,20 +56,18 @@ npm run dev
 
 To click through real pages, start Docker Desktop, run `npm run db:start`, and create `.env.local` as described in `docs/infrastructure/environment-and-deployment.md`. Seed accounts cannot sign in, so sign up a new Hacker or Judge (choose both to see the switcher). Claude gives the user a local Organizer login separately.
 
-## Final pass tasks, in priority order
+## Final pass results
 
-Your usage is limited, so do these in order and stop when they are done. Each one is inside your write set.
+Shipped on 2026-09-11:
 
-1. **Applications filter row.** On the organizer applications page at 1280px, the five filters share one row (`xl:grid-cols-5` in `components/organizer/ApplicationFilters.tsx`). The Status select clips its default option, `ORGANIZER_COPY.applications.anyStatus` ("All statuses except draft"), to "All statuses except dra".
-   - Make every filter show its longest option in full at 1280px and wider. You could rebalance the columns, wrap the filters onto two rows, or tighten the option copy in voice.
-   - Keep the labels, hints, `select` elements, and the Apply filters button.
-   - See it in the applications section of `/dev/gallery/organizer`.
-2. **Timeline flight path.** At 1280px the dashed path in `MissionTimeline` runs behind the four stop cards, so only short dashes show between them. Make it read as one continuous route joining the stops, for example by drawing it in the gaps or above the cards.
-   - Keep it decorative (`aria-hidden`) and static. The rocket at the current stop never loops.
-   - At 375px, where the stops stack, the timeline must still read as a sequence.
-3. **Mission clock at 375px.** In `CountdownPanel`, the small gold dot sits beside the heading and reads like a stray mark. Move it into the decoration, or hide it on small screens.
-4. **Clear themed copy.** Keep the voice, but make each themed phrase understandable on its own, especially `COPY.schedule.timeline.toBeAnnounced` ("Awaiting coordinates") and the countdown captions (`COPY.schedule.countdown.launch.caption` and `COPY.schedule.countdown.landing.caption`). Never write a date or time into copy.
-5. **QA.** Check `/`, `/dev/gallery`, and `/dev/gallery/organizer` at 375px and 1280px, with reduced motion on and off. Tab through each page to confirm focus rings are visible, including on dark panels (`data-surface="dark"`).
+1. **Applications filter row.** From `xl`, Search in `ApplicationFilters` takes its own row and the four selects share the next one. Every select shows its longest option in full from 375px to 1536px.
+2. **Timeline route.** One dashed line in `MissionTimeline` joins the stop markers. It runs down the left edge while the stops stack, and across above the cards from `lg`.
+   - The stops now stack in one column below `lg`.
+   - The markers are placed from each card's padding box, so complete stops, which have a thicker top border, move up 4px to stay on the line.
+3. **Mission clock.** The gold dot in `CountdownPanel` shows only from `sm`.
+4. **Copy.** The timeline states, `COPY.schedule.timeline.toBeAnnounced`, and both countdown captions now say plainly what they mean. The captions end with a colon because `Timestamp` prints the date right after them.
+
+Open polish for any later pass: while the stops stack, the dashed line runs past the last marker to the bottom of the last card.
 
 The judging rubric may change the scorecard's dimensions later. `Scorecard` and `RubricScoreField` render the dimensions from data, so your styling holds for any list of dimensions.
 
