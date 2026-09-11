@@ -175,7 +175,7 @@ Applicants never receive review scores, notes, recommendations, or reviewer iden
 
 ### Onboarding flow
 
-Applicants choose Hacker, Judge, or both at signup. `/onboarding` calls `requireApplicant()` and shows every type in `viewer.applicationTypes`. To confirm the account details and create the drafts, it calls `updateProfile({ displayName })` and then `createApplications()`, and opens the first application's editor. Once every draft exists, the page redirects there immediately.
+Applicants choose Hacker, Judge, or both at signup. `/onboarding` calls `requireApplicant()` and shows every type in `viewer.applicationTypes`. To confirm the account details and create the drafts, it calls `updateProfile({ displayName })` and then `createApplications()`, and opens the portal dashboard. Once every draft exists, the page redirects there immediately.
 
 ### Choosing an application (`?type=`)
 

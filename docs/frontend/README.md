@@ -17,7 +17,7 @@ Phase 2 builds the applicant side of CalHacks Mission Control on the Phase 1 bac
 | `/login` | `app/(auth)/login/page.tsx`, `_components/LoginForm.tsx` | Sanitizes `next` (1–2048 characters) and `error` (known callback codes only) | `AuthShell`, callback notice, `LoginForm` |
 | `/signup` | `app/(auth)/signup/page.tsx`, `_components/SignupForm.tsx` | none | `AuthShell`, `SignupForm` (Hacker, Judge, or both), `CheckEmailNotice` when confirmation is on |
 | `/auth/callback` | `app/auth/callback/route.ts` | PKCE code exchange | Redirects to `/onboarding` or `/login?error=<code>` |
-| `/onboarding` | `app/onboarding/page.tsx`, `_components/OnboardingForm.tsx` | `requireApplicant`; redirects to the editor once every chosen application exists | "Applying as" badges, display name, "Start application" |
+| `/onboarding` | `app/onboarding/page.tsx`, `_components/OnboardingForm.tsx` | `requireApplicant`; redirects to the portal dashboard once every chosen application exists | "Applying as" badges, display name, "Start application" |
 | `/portal?type=` | `app/portal/layout.tsx`, `page.tsx` | `requireApplicant`; a missing application redirects to `/onboarding` | `PortalDraftDashboard` or `PortalSubmittedDashboard` with `LiveCountdowns`, and the application switcher when the account holds both |
 | `/portal/application?type=` | `app/portal/application/page.tsx`, `_components/*` | `requireApplicant`; `?section=<step>` selects the step | The editor, or the read-only submitted view |
 | `/portal/mission?type=` | `app/portal/mission/page.tsx` | `requireApplicant`; drafts redirect to `/portal?type=` | `MissionTracker` |
@@ -27,7 +27,7 @@ Phase 2 builds the applicant side of CalHacks Mission Control on the Phase 1 bac
 
 Each segment that loads data has `loading.tsx` and `error.tsx`. The root has `error.tsx`, `global-error.tsx`, and `not-found.tsx`.
 
-Render redirects always point where the client is already heading. For example, onboarding redirects to the editor because the onboarding form navigates there after `createApplications`, and the editor never redirects on status. A Server Action's `revalidatePath` re-renders the current route in the same response, so this rule avoids a redirect racing the client's own navigation.
+Render redirects always point where the client is already heading. For example, onboarding redirects to the portal dashboard because the onboarding form navigates there after `createApplications`, and the editor never redirects on status. A Server Action's `revalidatePath` re-renders the current route in the same response, so this rule avoids a redirect racing the client's own navigation.
 
 ## Layers
 

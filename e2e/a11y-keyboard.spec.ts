@@ -94,7 +94,7 @@ test.describe("keyboard", () => {
     await tabTo(page, page.getByLabel(COPY.onboarding.displayName));
     await page.keyboard.type("Keyboard Hacker");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/portal\/application\?type=hacker&section=about$/);
+    await expect(page).toHaveURL(/\/portal$/);
 
     // Everything except the Experience section is answered through the Data API to keep the test focused.
     const applicant = await signInDataClient(email, password);

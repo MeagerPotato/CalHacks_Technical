@@ -35,11 +35,8 @@ test("one account applies as a Hacker and a Judge and switches between the two a
   await page.getByLabel(COPY.onboarding.displayName).fill("Both Applicant");
   await page.getByRole("button", { name: COPY.onboarding.submit }).click();
 
-  // Onboarding creates both drafts and opens the first.
-  await expect(page).toHaveURL(/\/portal\/application\?type=hacker&section=about$/);
-  await expect(
-    page.getByRole("heading", { level: 1, name: COPY.editor.title(APPLICATION_TYPE_LABELS.hacker) }),
-  ).toBeVisible();
+  // Onboarding creates both drafts and opens the portal dashboard.
+  await expect(page).toHaveURL(/\/portal$/);
   const applicant = await signInDataClient(email, password);
   expect(
     await queryRows(
