@@ -109,6 +109,9 @@ test.describe("Hacker application journey", () => {
     } else {
       await expect(deadlineCard).toContainText(COPY.portal.deadlineTba);
     }
+    const countdowns = page.getByTestId("countdowns");
+    await expect(countdowns.getByTestId("countdown-launch")).toBeVisible();
+    await expect(countdowns.getByTestId("countdown-landing")).toBeVisible();
 
     const readiness = page.getByTestId("launch-readiness");
     await expect(readiness.getByTestId("readiness-item-about")).toHaveAttribute("data-state", /complete|in_progress/);

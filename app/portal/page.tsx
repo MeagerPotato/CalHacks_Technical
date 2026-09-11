@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { LiveCountdowns } from "@/app/_components/LiveCountdowns";
 import { PortalDraftDashboard } from "@/components/portal/PortalDraftDashboard";
 import { PortalSubmittedDashboard } from "@/components/portal/PortalSubmittedDashboard";
 import { COPY } from "@/content/copy";
 import { requireApplicant } from "@/lib/auth/dal";
 import { getMyApplications } from "@/lib/data/applications";
-import { APPLICATION_DEADLINE } from "@/lib/event";
+import { EVENT_SCHEDULE } from "@/lib/event";
 import { ROUTES, portalRoute, resolveApplicationType } from "@/lib/routes";
 import { toPortalView } from "@/lib/view-models/portal";
+import { toScheduleViews } from "@/lib/view-models/schedule";
 
 export const metadata: Metadata = { title: COPY.meta.titles.portal };
 
@@ -40,7 +42,14 @@ export default async function PortalPage({ searchParams }: PageProps<"/portal">)
     viewer,
     application,
     applicationTypes: applications.map((candidate) => candidate.type),
-    deadline: APPLICATION_DEADLINE,
+    deadline: EVENT_SCHEDULE.applicationDeadline,
   });
-  return view.kind === "draft" ? <PortalDraftDashboard view={view} /> : <PortalSubmittedDashboard view={view} />;
+  const { countdowns: countdownsView } = toScheduleViews(EVENT_SCHEDULE);
+  const countdowns = countdownsView ? <LiveCountdowns view={countdownsView} /> : null;
+
+  return view.kind === "draft" ? (
+    <PortalDraftDashboard view={view} countdowns={countdowns} />
+  ) : (
+    <PortalSubmittedDashboard view={view} countdowns={countdowns} />
+  );
 }

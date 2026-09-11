@@ -6,13 +6,23 @@ import { deriveMissionState } from "@/lib/domain/mission";
 import { noticeForError, toSummaryItems, type FeedbackCode } from "@/lib/editor/feedback";
 import { selectSaveStatus } from "@/lib/editor/reducer";
 import { applicationStepHref, sectionForField } from "@/lib/editor/steps";
+import { EVENT_SCHEDULE } from "@/lib/event";
 import { toTimestampView } from "@/lib/format/datetime";
 import { calculateApplicationCompletion } from "@/lib/validation/completion";
 import { toAnswerSections } from "@/lib/view-models/answers";
 import { toMissionView } from "@/lib/view-models/mission";
 import { toPortalView } from "@/lib/view-models/portal";
 import { toReadinessItems, toSectionNavItems } from "@/lib/view-models/readiness";
-import type { MissionView, NoticeView, PortalView } from "@/lib/view-models/types";
+import { toCountdownReading } from "@/lib/view-models/countdown";
+import { toCountdownsView, toTimelineView } from "@/lib/view-models/schedule";
+import type {
+  CountdownReadingView,
+  CountdownsView,
+  MissionView,
+  NoticeView,
+  PortalView,
+  TimelineView,
+} from "@/lib/view-models/types";
 import {
   draftInvalidHackerResponses,
   partialHackerResponses,
@@ -28,7 +38,7 @@ const UPDATED_AT = "2026-09-08T21:15:00.000Z";
 const LAUNCHED_AT = "2026-09-09T18:30:00.000Z";
 const REVIEW_STARTED_AT = "2026-09-12T16:05:00.000Z";
 const DECISION_RELEASED_AT = "2026-09-20T19:45:00.000Z";
-/** A sample deadline for the deadline card only; the product shows "To be announced" until one is configured. */
+/** A sample deadline for the deadline card only, apart from the configured one; `null` shows "To be announced". */
 const SAMPLE_DEADLINE = "2026-10-01T06:59:00.000Z";
 
 export interface GalleryVariant<T> {
@@ -123,6 +133,35 @@ export const portalViews: GalleryVariant<PortalView>[] = [
     view: portalView(application),
   })),
 ];
+
+/** The mission timeline and the countdowns at one moment of the configured schedule. */
+export interface ScheduleExample {
+  id: string;
+  label: string;
+  timeline: TimelineView;
+  countdowns: CountdownsView | null;
+  readings: CountdownReadingView[];
+}
+
+// Moments across the configured schedule, so every timeline and countdown state shows without waiting for it.
+const SCHEDULE_MOMENTS = [
+  { id: "open", label: "Applications open", at: "2026-09-11T12:00:00-07:00" },
+  { id: "results-next", label: "Deadline passed, results up next", at: "2026-09-22T12:00:00-07:00" },
+  { id: "event", label: "During the event", at: "2026-10-24T12:00:00-07:00" },
+  { id: "after-event", label: "After the event", at: "2026-10-27T12:00:00-07:00" },
+] as const;
+
+export const scheduleExamples: ScheduleExample[] = SCHEDULE_MOMENTS.map(({ id, label, at }) => {
+  const now = Date.parse(at);
+  const countdowns = toCountdownsView(EVENT_SCHEDULE, now);
+  return {
+    id,
+    label,
+    timeline: toTimelineView(EVENT_SCHEDULE, now),
+    countdowns,
+    readings: countdowns ? countdowns.timers.map((timer) => toCountdownReading(timer, now)) : [],
+  };
+});
 
 /** Mission tracker states for every submitted status. */
 export const missionViews: GalleryVariant<MissionView>[] = submittedApplications.map((application) => ({

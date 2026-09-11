@@ -1,11 +1,15 @@
+import type { ReactNode } from "react";
+
 import { EngineerArt } from "@/components/art/EngineerArt";
 import { HeroArt } from "@/components/art/HeroArt";
 import { BrandMark } from "@/components/art/BrandMark";
 import { Sticker, type StickerName } from "@/components/art/Sticker";
+import { MissionTimeline } from "@/components/schedule/MissionTimeline";
 import { AppLink } from "@/components/ui/AppLink";
 import { Card } from "@/components/ui/Card";
 import { COPY, LOCKED } from "@/content/copy";
 import { ROUTES } from "@/lib/routes";
+import type { TimelineView } from "@/lib/view-models/types";
 
 type PromiseKey = keyof typeof LOCKED.landing.promises;
 
@@ -20,12 +24,17 @@ const PROMISE_STICKERS = {
 
 const PORTAL_CARD_TITLE_ID = "landing-portal-card-title";
 
+export interface LandingViewProps {
+  /** The live countdown panel (a client container), or null when neither countdown has a date. */
+  countdowns: ReactNode;
+  timeline: TimelineView;
+}
+
 /**
- * The public landing page (PROJECT_PLAN.md section 14): a compact nav, the hero, the portal card with the Apply now
- * and Sign in links, and the Assemble, Launch, and Explore promise cards. It takes no props and reads only copy, so
- * the route stays static.
+ * The public landing page (PROJECT_PLAN.md section 14): a compact nav, the hero, the countdowns, the portal card with
+ * the Apply now and Sign in links, the mission timeline, and the Assemble, Launch, and Explore promise cards.
  */
-export function LandingView() {
+export function LandingView({ countdowns, timeline }: LandingViewProps) {
   return (
     <>
       <header className="border-b border-border bg-page">
@@ -60,6 +69,8 @@ export function LandingView() {
           <HeroArt />
         </div>
 
+        {countdowns}
+
         <div className="grid items-center gap-8 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <Card labelledBy={PORTAL_CARD_TITLE_ID} data-testid="landing-portal-card">
             <div className="flex flex-col gap-4">
@@ -82,8 +93,10 @@ export function LandingView() {
           </div>
         </div>
 
+        <MissionTimeline view={timeline} />
+
         {/* role="list" keeps list semantics in Safari, which drops them from lists styled with list-style: none. */}
-        <ul role="list" className="grid gap-4 pb-6 md:grid-cols-3">
+        <ul role="list" data-testid="landing-promises" className="grid gap-4 pb-6 md:grid-cols-3">
           {PROMISES.map((key) => (
             // A grid item stretches, so every promise card fills the row height.
             <li key={key} className="grid">

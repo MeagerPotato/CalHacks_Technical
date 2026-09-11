@@ -4,7 +4,13 @@
 
 Recorded on 2026-09-11:
 
-- **Application deadline:** 5:00 PM Pacific on September 11, 2026 (`APPLICATION_DEADLINE` in `lib/event.ts`). The portal displays it. Nothing enforces it: applicants can still save and submit after it passes.
+- **Event schedule:** the Cal Hacks 13.0 regular round, set in `EVENT_SCHEDULE` in `lib/event.ts` (updated on 2026-09-11):
+  - Applications are open now.
+  - The deadline is 11:59 PM Pacific on September 20, 2026 (`APPLICATION_DEADLINE`).
+  - Results are released September 25, 2026.
+  - The event runs October 23 to 25, 2026.
+
+  The landing page timeline and the countdowns on the landing page and the portal show these dates. Nothing enforces the deadline: applicants can still save and submit after it passes.
 - **Confirm email:** on in the hosted Supabase project. Applicants receive confirmation emails only after custom SMTP is configured (see [Hosted Supabase](#hosted-supabase), step 3).
 - **Origin for confirmation links:** `SITE_URL` stays unset, so links use Vercel's production URL (`VERCEL_PROJECT_PRODUCTION_URL`).
 

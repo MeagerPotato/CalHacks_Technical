@@ -22,6 +22,8 @@ import { MissionTracker } from "@/components/mission/MissionTracker";
 import { LaunchReadiness } from "@/components/portal/LaunchReadiness";
 import { PortalDraftDashboard } from "@/components/portal/PortalDraftDashboard";
 import { PortalSubmittedDashboard } from "@/components/portal/PortalSubmittedDashboard";
+import { CountdownPanel } from "@/components/schedule/CountdownPanel";
+import { MissionTimeline } from "@/components/schedule/MissionTimeline";
 import { AppLink } from "@/components/ui/AppLink";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -43,8 +45,11 @@ import {
   HACKER_SKILL_OPTIONS,
 } from "@/lib/application-config";
 import { APPLICATION_STATUSES } from "@/lib/domain/enums";
+import { EVENT_SCHEDULE } from "@/lib/event";
 import { ROUTES } from "@/lib/routes";
+import { toScheduleViews } from "@/lib/view-models/schedule";
 
+import { LiveCountdowns } from "../../_components/LiveCountdowns";
 import { MotionReplay } from "./_components/MotionReplay";
 import { PendingExample } from "./_components/PendingExample";
 import {
@@ -55,6 +60,7 @@ import {
   reviewAnswerSections,
   sampleTimestamp,
   saveStatusViews,
+  scheduleExamples,
   sectionNavItems,
   submittedAnswerSections,
   summaryItems,
@@ -97,6 +103,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
   const params = await searchParams;
   const portal = pickVariant(params.portal, portalViews, "in-progress");
   const mission = pickVariant(params.mission, missionViews, "accepted");
+  const { countdowns: liveCountdowns } = toScheduleViews(EVENT_SCHEDULE);
 
   return (
     <main id="main" tabIndex={-1}>
@@ -258,6 +265,32 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
           <LaunchReadiness items={readinessItems} headingLevel={3} headingId="gallery-readiness-title" />
         </MotionReplay>
       </GallerySection>
+
+      <GallerySection
+        id="gallery-schedule"
+        title="Mission clock"
+        description="The live countdowns as the landing page and the portal show them. Pause stops both."
+      >
+        {liveCountdowns ? <LiveCountdowns view={liveCountdowns} /> : null}
+      </GallerySection>
+      {scheduleExamples.map((example) => (
+        <GallerySection
+          key={example.id}
+          id={`gallery-schedule-${example.id}`}
+          title={`Schedule: ${example.label}`}
+          description="The timeline and a paused countdown panel at this moment."
+        >
+          <MissionTimeline view={example.timeline} headingId={`gallery-timeline-${example.id}`} />
+          {example.countdowns ? (
+            <CountdownPanel
+              view={example.countdowns}
+              readings={example.readings}
+              paused
+              headingId={`gallery-countdowns-${example.id}`}
+            />
+          ) : null}
+        </GallerySection>
+      ))}
 
       <GallerySection id="gallery-portal" title="Portal dashboard" description="Choose a state.">
         {portalViews.map((variant) => (

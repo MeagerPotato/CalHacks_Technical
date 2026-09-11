@@ -91,6 +91,65 @@ export const COPY = {
       explore: "Follow your application from submission to decision. Your mission tracker shows where things stand.",
     },
   },
+  schedule: {
+    timeline: {
+      title: "Mission timeline",
+      stops: {
+        applicationsOpen: "Applications open",
+        applicationDeadline: "Application deadline",
+        resultsReleased: "Results released",
+        event: "Event dates",
+      },
+      states: {
+        complete: "Complete",
+        active: "Happening now",
+        next: "Up next",
+        upcoming: "Upcoming",
+      },
+      openNow: "Open now",
+      toBeAnnounced: "To be announced",
+    },
+    countdown: {
+      title: "Mission clock",
+      pause: "Pause countdowns",
+      launch: {
+        title: "Time to launch",
+        caption: "Applications due",
+        completeText: "The application deadline has passed.",
+      },
+      landing: {
+        title: "Time to landing",
+        caption: "Cal Hacks starts",
+        completeText: "Cal Hacks has started.",
+      },
+      units: {
+        days: "Days",
+        hours: "Hours",
+        minutes: "Minutes",
+        seconds: "Seconds",
+      },
+      remaining: (days: number, hours: number, minutes: number) => {
+        const named = (
+          [
+            [days, "day", "days"],
+            [hours, "hour", "hours"],
+            [minutes, "minute", "minutes"],
+          ] as const
+        )
+          .filter(([count]) => count > 0)
+          .map(([count, one, many]) => `${count} ${count === 1 ? one : many}`);
+        if (named.length === 0) {
+          return "Less than a minute left";
+        }
+        if (named.length === 1) {
+          return `${named[0]} left`;
+        }
+        return named.length === 2
+          ? `${named[0]} and ${named[1]} left`
+          : `${named[0]}, ${named[1]}, and ${named[2]} left`;
+      },
+    },
+  },
   auth: {
     signOut: {
       pending: "Signing out…",

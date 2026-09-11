@@ -21,13 +21,18 @@ import { PortalSubmittedDashboard } from "@/components/portal/PortalSubmittedDas
 import { PortalWelcome } from "@/components/portal/PortalWelcome";
 import { ProgressCard } from "@/components/portal/ProgressCard";
 import { SubmittedStatusCard } from "@/components/portal/SubmittedStatusCard";
+import { CountdownPanel } from "@/components/schedule/CountdownPanel";
+import { MissionTimeline } from "@/components/schedule/MissionTimeline";
 import { AppLink } from "@/components/ui/AppLink";
+import { Button } from "@/components/ui/Button";
 import { COPY, LOCKED } from "@/content/copy";
 import { APPLICATION_STATUS_LABELS, APPLICATION_TYPE_LABELS } from "@/lib/application-config";
 import type { DecisionStatus } from "@/lib/domain/enums";
 import { MISSION_STAGES, type MissionLeg, type MissionLegState } from "@/lib/domain/mission";
 import { ROUTES } from "@/lib/routes";
 import type {
+  CountdownReadingView,
+  CountdownsView,
   DecisionView,
   MissionLegView,
   MissionView,
@@ -35,6 +40,7 @@ import type {
   PortalSubmittedView,
   PortalWelcomeView,
   ReadinessItemView,
+  TimelineView,
   TimestampView,
 } from "@/lib/view-models/types";
 
@@ -290,6 +296,79 @@ const LAUNCHED_AT: TimestampView = { iso: "2026-09-09T17:00:00.000Z", label: "Se
 const REVIEW_STARTED_AT: TimestampView = { iso: "2026-09-10T16:15:00.000Z", label: "Sep 10, 2026, 9:15 AM PDT" };
 const RELEASED_AT: TimestampView = { iso: "2026-09-12T01:45:00.000Z", label: "Sep 11, 2026, 6:45 PM PDT" };
 const DEADLINE: TimestampView = { iso: "2026-10-01T06:59:00.000Z", label: "Sep 30, 2026, 11:59 PM PDT" };
+const RESULTS_DAY: TimestampView = { iso: "2026-10-05", label: "Oct 5, 2026" };
+const EVENT_DAY: TimestampView = { iso: "2026-10-23", label: "Oct 23, 2026" };
+
+const TIMELINE_VIEW: TimelineView = {
+  title: COPY.schedule.timeline.title,
+  stops: [
+    {
+      id: "applicationsOpen",
+      name: COPY.schedule.timeline.stops.applicationsOpen,
+      state: "complete",
+      stateLabel: COPY.schedule.timeline.states.complete,
+      isCurrent: false,
+      when: null,
+      whenText: null,
+    },
+    {
+      id: "applicationDeadline",
+      name: COPY.schedule.timeline.stops.applicationDeadline,
+      state: "complete",
+      stateLabel: COPY.schedule.timeline.states.complete,
+      isCurrent: false,
+      when: DEADLINE,
+      whenText: null,
+    },
+    {
+      id: "resultsReleased",
+      name: COPY.schedule.timeline.stops.resultsReleased,
+      state: "upcoming",
+      stateLabel: COPY.schedule.timeline.states.next,
+      isCurrent: true,
+      when: RESULTS_DAY,
+      whenText: null,
+    },
+    {
+      id: "event",
+      name: COPY.schedule.timeline.stops.event,
+      state: "upcoming",
+      stateLabel: COPY.schedule.timeline.states.upcoming,
+      isCurrent: false,
+      when: null,
+      whenText: COPY.schedule.timeline.toBeAnnounced,
+    },
+  ],
+};
+
+const COUNTDOWNS_VIEW: CountdownsView = {
+  title: COPY.schedule.countdown.title,
+  pauseLabel: COPY.schedule.countdown.pause,
+  renderedAt: Date.parse("2026-09-11T19:00:00.000Z"),
+  timers: [
+    { id: "launch", ...COPY.schedule.countdown.launch, target: DEADLINE, endsAt: DEADLINE.iso },
+    { id: "landing", ...COPY.schedule.countdown.landing, target: EVENT_DAY, endsAt: "2026-10-23T07:00:00.000Z" },
+  ],
+};
+
+const COUNTDOWN_READINGS: CountdownReadingView[] = [
+  {
+    id: "launch",
+    state: "counting",
+    units: [
+      { unit: "days", value: "19", label: COPY.schedule.countdown.units.days },
+      { unit: "hours", value: "04", label: COPY.schedule.countdown.units.hours },
+      { unit: "minutes", value: "59", label: COPY.schedule.countdown.units.minutes },
+      { unit: "seconds", value: "07", label: COPY.schedule.countdown.units.seconds },
+    ],
+    summary: COPY.schedule.countdown.remaining(19, 4, 59),
+  },
+  { id: "landing", state: "complete", units: [], summary: COPY.schedule.countdown.landing.completeText },
+];
+
+const COUNTDOWN_PANEL = <CountdownPanel view={COUNTDOWNS_VIEW} readings={COUNTDOWN_READINGS} paused={false} />;
+
+const LANDING_PROPS = { timeline: TIMELINE_VIEW, countdowns: COUNTDOWN_PANEL };
 
 function readinessItem(
   item: Pick<ReadinessItemView, "id" | "label" | "state"> & Partial<ReadinessItemView>,
@@ -480,7 +559,7 @@ const SIGN_OUT = <button type="button">{LOCKED.auth.signOut}</button>;
 
 describe("LandingView", () => {
   it("renders the header navigation, then one main landmark with one h1", () => {
-    const html = renderToStaticMarkup(<LandingView />);
+    const html = renderToStaticMarkup(<LandingView {...LANDING_PROPS} />);
     const main = expectSingleMain(html);
     expect(textsOf(html, "h1")).toEqual([LOCKED.landing.heroTitle]);
     expect(textsOf(main, "h1")).toEqual([LOCKED.landing.heroTitle]);
@@ -501,12 +580,14 @@ describe("LandingView", () => {
   });
 
   it("renders the locked hero, the tagline, and the three promise cards", () => {
-    const html = renderToStaticMarkup(<LandingView />);
+    const html = renderToStaticMarkup(<LandingView {...LANDING_PROPS} />);
     const text = textOf(html);
     expect(text).toContain(LOCKED.landing.heroSubtitle);
     expect(text).toContain(COPY.landing.tagline);
     expect(textsOf(html, "h2")).toEqual([
+      COUNTDOWNS_VIEW.title,
       COPY.landing.portalCard.title,
+      TIMELINE_VIEW.title,
       LOCKED.landing.promises.assemble,
       LOCKED.landing.promises.launch,
       LOCKED.landing.promises.explore,
@@ -517,7 +598,7 @@ describe("LandingView", () => {
   });
 
   it("renders the portal card inside main with Apply now and Sign in links", () => {
-    const html = renderToStaticMarkup(<LandingView />);
+    const html = renderToStaticMarkup(<LandingView {...LANDING_PROPS} />);
     const card = byTestId(expectSingleMain(html), "landing-portal-card");
     const root = rootOf(card);
     expect(root.name).toBe("section");
@@ -531,7 +612,7 @@ describe("LandingView", () => {
   });
 
   it("routes every link through AppLink and keeps the art decorative", () => {
-    const html = renderToStaticMarkup(<LandingView />);
+    const html = renderToStaticMarkup(<LandingView {...LANDING_PROPS} />);
     const links = linksIn(html);
     expect(links.every((link) => link.attrs["data-guarded"] === "true")).toBe(true);
     expect(links.filter((link) => link.href === ROUTES.login).map((link) => link.text)).toEqual([
@@ -551,20 +632,34 @@ describe("LandingView", () => {
     expectDecorativeIcons(html);
 
     // The hero and engineer art slots render inside main.
-    const [main] = elementsOfType(LandingView(), "main");
+    const [main] = elementsOfType(LandingView(LANDING_PROPS), "main");
     const mainChildren = main.props.children as ReactNode;
     expect(elementsOfType(mainChildren, HeroArt)).toHaveLength(1);
     expect(elementsOfType(mainChildren, EngineerArt).map((art) => art.props.variant)).toEqual(["landing"]);
   });
 
   it("keeps the promise cards a list in Safari, which drops list-style: none list semantics", () => {
-    const main = expectSingleMain(renderToStaticMarkup(<LandingView />));
-    const list = onlyTag(main, "ul");
-    expect(list.attrs.role).toBe("list");
+    const main = expectSingleMain(renderToStaticMarkup(<LandingView {...LANDING_PROPS} />));
+    const list = byTestId(main, "landing-promises");
+    expect(rootOf(list).name).toBe("ul");
+    expect(rootOf(list).attrs.role).toBe("list");
     const promises = ["assemble", "launch", "explore"] as const;
-    expect(elementsWhere(main, (tag) => tag.name === "li").map(textOf)).toEqual(
+    expect(elementsWhere(list, (tag) => tag.name === "li").map(textOf)).toEqual(
       promises.map((key) => `${LOCKED.landing.promises[key]}${COPY.landing.promises[key]}`),
     );
+  });
+
+  it("places the countdowns after the hero and the timeline before the promise cards", () => {
+    const html = renderToStaticMarkup(<LandingView {...LANDING_PROPS} />);
+    const main = expectSingleMain(html);
+    const order = ["countdowns", "landing-portal-card", "mission-timeline", "landing-promises"];
+    expect(testIdsIn(main).filter((testId) => order.includes(testId))).toEqual(order);
+    expect(main.indexOf("<h1")).toBeLessThan(main.indexOf('data-testid="countdowns"'));
+
+    // Without a countdown date, nothing stands in for the panel.
+    const withoutCountdowns = renderToStaticMarkup(<LandingView {...LANDING_PROPS} countdowns={null} />);
+    expect(testIdsIn(withoutCountdowns)).not.toContain("countdowns");
+    expectHeadingOutline(withoutCountdowns, 1);
   });
 });
 
@@ -900,6 +995,128 @@ describe("DeadlineCard", () => {
   });
 });
 
+describe("MissionTimeline", () => {
+  it("renders the stops in order with their dates and states as text, marking only the current stop", () => {
+    const html = renderToStaticMarkup(<MissionTimeline view={TIMELINE_VIEW} />);
+    const root = rootOf(html);
+    expect(root.name).toBe("section");
+    expect(root.attrs["data-testid"]).toBe("mission-timeline");
+    expect(tagById(html, root.attrs["aria-labelledby"]).name).toBe("h2");
+    expect(textsOf(html, "h2")).toEqual([TIMELINE_VIEW.title]);
+    expect(textsOf(html, "h3")).toEqual(TIMELINE_VIEW.stops.map((stop) => stop.name));
+    expect(onlyTag(html, "ol").attrs.role).toBe("list");
+    expectHeadingOutline(html, 2);
+    expectUniqueIds(html);
+    expectReferencesResolve(html);
+    expectDecorativeIcons(html);
+
+    expect(
+      tagsNamed(html, "li").map((tag) => [
+        tag.attrs["data-testid"],
+        tag.attrs["data-state"],
+        tag.attrs["data-current"],
+        tag.attrs["aria-current"],
+      ]),
+    ).toEqual([
+      ["timeline-stop-applicationsOpen", "complete", "false", undefined],
+      ["timeline-stop-applicationDeadline", "complete", "false", undefined],
+      ["timeline-stop-resultsReleased", "upcoming", "true", "step"],
+      ["timeline-stop-event", "upcoming", "false", undefined],
+    ]);
+    expect(tagsNamed(html, "time").map((tag) => tag.attrs.datetime)).toEqual([DEADLINE.iso, RESULTS_DAY.iso]);
+
+    const texts = TIMELINE_VIEW.stops.map((stop) => textOf(byTestId(html, `timeline-stop-${stop.id}`)));
+    expect(texts).toEqual([
+      `${COPY.schedule.timeline.stops.applicationsOpen}${COPY.schedule.timeline.states.complete}`,
+      `${COPY.schedule.timeline.stops.applicationDeadline}${DEADLINE.label}${COPY.schedule.timeline.states.complete}`,
+      `${COPY.schedule.timeline.stops.resultsReleased}${RESULTS_DAY.label}${COPY.schedule.timeline.states.next}`,
+      `${COPY.schedule.timeline.stops.event}${COPY.schedule.timeline.toBeAnnounced}${COPY.schedule.timeline.states.upcoming}`,
+    ]);
+    // A stop with neither a date nor stand-in text has no empty date line.
+    expect(tagsNamed(byTestId(html, "timeline-stop-applicationsOpen"), "p")).toHaveLength(0);
+  });
+
+  it("uses the heading id it is given", () => {
+    const html = renderToStaticMarkup(<MissionTimeline view={TIMELINE_VIEW} headingId="gallery-timeline" />);
+    expect(rootOf(html).attrs["aria-labelledby"]).toBe("gallery-timeline");
+    expect(tagById(html, "gallery-timeline").name).toBe("h2");
+  });
+});
+
+describe("CountdownPanel", () => {
+  const props = { view: COUNTDOWNS_VIEW, readings: COUNTDOWN_READINGS, paused: false };
+
+  it("shows each countdown with its target, hides the changing digits, and gives assistive technology a summary", () => {
+    const html = renderToStaticMarkup(<CountdownPanel {...props} />);
+    const root = rootOf(html);
+    expect(root.name).toBe("section");
+    expect(root.attrs["data-testid"]).toBe("countdowns");
+    expect(root.attrs["data-paused"]).toBe("false");
+    expect(tagById(html, root.attrs["aria-labelledby"]).name).toBe("h2");
+    expect(textsOf(html, "h2")).toEqual([COUNTDOWNS_VIEW.title]);
+    expect(textsOf(html, "h3")).toEqual(COUNTDOWNS_VIEW.timers.map((timer) => timer.title));
+    expect(onlyTag(html, "ul").attrs.role).toBe("list");
+    expectHeadingOutline(html, 2);
+    expectUniqueIds(html);
+    expectReferencesResolve(html);
+    expectDecorativeIcons(html);
+
+    const launch = byTestId(html, "countdown-launch");
+    expect(rootOf(launch).attrs["data-state"]).toBe("counting");
+    expect(onlyTag(launch, "time").attrs.datetime).toBe(DEADLINE.iso);
+    expect(textOf(launch)).toContain(`${COPY.schedule.countdown.launch.caption} ${DEADLINE.label}`);
+    const [digits, ...extraDigits] = elementsWhere(launch, (tag) => "data-countdown-digits" in tag.attrs);
+    expect(extraDigits).toHaveLength(0);
+    expect(rootOf(digits).attrs["aria-hidden"]).toBe("true");
+    expect(parseTags(digits).filter((tag) => "data-unit" in tag.attrs).map((tag) => tag.attrs["data-unit"])).toEqual([
+      "days",
+      "hours",
+      "minutes",
+      "seconds",
+    ]);
+    expect(elementsWhere(digits, (tag) => "data-countdown-value" in tag.attrs).map(textOf)).toEqual([
+      "19",
+      "04",
+      "59",
+      "07",
+    ]);
+    const [summary] = elementsWhere(launch, (tag) => "data-countdown-summary" in tag.attrs);
+    expect(textOf(summary)).toBe(COUNTDOWN_READINGS[0].summary);
+    expect(rootOf(summary).attrs["aria-hidden"]).toBeUndefined();
+    expect(rootOf(summary).attrs.class.split(" ")).toContain("sr-only");
+
+    const landing = byTestId(html, "countdown-landing");
+    expect(rootOf(landing).attrs["data-state"]).toBe("complete");
+    expect(onlyTag(landing, "time").attrs.datetime).toBe(EVENT_DAY.iso);
+    expect(elementsWhere(landing, (tag) => "data-countdown-digits" in tag.attrs)).toHaveLength(0);
+    const [done] = elementsWhere(landing, (tag) => "data-countdown-summary" in tag.attrs);
+    expect(textOf(done)).toBe(COPY.schedule.countdown.landing.completeText);
+    expect(rootOf(done).attrs.class.split(" ")).not.toContain("sr-only");
+
+    const button = onlyTag(html, "button");
+    expect(button.attrs.type).toBe("button");
+    expect(button.attrs["aria-pressed"]).toBe("false");
+    expect(textsOf(html, "button")).toEqual([COUNTDOWNS_VIEW.pauseLabel]);
+  });
+
+  it("keeps the toggle label and reports a pause with aria-pressed", () => {
+    const html = renderToStaticMarkup(<CountdownPanel {...props} paused />);
+    expect(rootOf(html).attrs["data-paused"]).toBe("true");
+    expect(onlyTag(html, "button").attrs["aria-pressed"]).toBe("true");
+    expect(textsOf(html, "button")).toEqual([COUNTDOWNS_VIEW.pauseLabel]);
+  });
+
+  it("attaches the pause handler only when one is passed, and uses the heading id it is given", () => {
+    const onTogglePause = vi.fn();
+    expect(elementsOfType(CountdownPanel({ ...props, onTogglePause }), Button)[0].props.onClick).toBe(onTogglePause);
+    expect(elementsOfType(CountdownPanel(props), Button)[0].props.onClick).toBeUndefined();
+
+    const html = renderToStaticMarkup(<CountdownPanel {...props} headingId="gallery-countdowns" />);
+    expect(rootOf(html).attrs["aria-labelledby"]).toBe("gallery-countdowns");
+    expect(tagById(html, "gallery-countdowns").name).toBe("h2");
+  });
+});
+
 describe("SubmittedStatusCard", () => {
   it("renders the status, the launch time, and the mission and application links", () => {
     const html = renderToStaticMarkup(<SubmittedStatusCard view={SUBMITTED_VIEW} />);
@@ -950,6 +1167,22 @@ describe("PortalDraftDashboard", () => {
     const art = parseTags(html).filter((tag) => tag.attrs["data-variant"] === "dashboard");
     expect(art.map((tag) => tag.attrs["aria-hidden"])).toEqual(["true"]);
   });
+
+  it("shows the countdowns between the welcome and the cards", () => {
+    const html = renderToStaticMarkup(<PortalDraftDashboard view={DRAFT_VIEW} countdowns={COUNTDOWN_PANEL} />);
+    expect(textsOf(html, "h1")).toEqual([WELCOME.greeting]);
+    expectHeadingOutline(html, 1);
+    expectUniqueIds(html);
+    expectReferencesResolve(html);
+    expect(testIdsIn(html).filter((testId) => !testId.startsWith("readiness-item-"))).toEqual([
+      "countdowns",
+      "countdown-launch",
+      "countdown-landing",
+      "progress-card",
+      "deadline-card",
+      "launch-readiness",
+    ]);
+  });
 });
 
 describe("PortalSubmittedDashboard", () => {
@@ -967,6 +1200,20 @@ describe("PortalSubmittedDashboard", () => {
     expect(trackLinks.map((link) => link.href)).toEqual([ROUTES.portalMission]);
     const deadlineTimes = tagsNamed(byTestId(html, "deadline-card"), "time");
     expect(deadlineTimes.map((tag) => tag.attrs.datetime)).toEqual([DEADLINE.iso]);
+  });
+
+  it("shows the countdowns between the welcome and the cards", () => {
+    const html = renderToStaticMarkup(<PortalSubmittedDashboard view={SUBMITTED_VIEW} countdowns={COUNTDOWN_PANEL} />);
+    expectHeadingOutline(html, 1);
+    expectUniqueIds(html);
+    expectReferencesResolve(html);
+    expect(testIdsIn(html)).toEqual([
+      "countdowns",
+      "countdown-launch",
+      "countdown-landing",
+      "submitted-card",
+      "deadline-card",
+    ]);
   });
 });
 
