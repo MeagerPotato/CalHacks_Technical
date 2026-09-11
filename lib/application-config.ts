@@ -26,8 +26,9 @@ import { RUBRIC_DIMENSIONS, RUBRIC_SCORE_RANGE, type RubricDimension } from "@/l
 //
 // Structure, required flags, limits, and option values are derived from the Zod
 // schemas so they cannot drift. Labels here are plain descriptive names taken from
-// PROJECT_PLAN.md; the frontend owns final copy, help text, rubric anchors, and
-// presentation, and may edit labels freely without touching validation.
+// PROJECT_PLAN.md. Applicant-facing wording belongs in content/copy.ts: FIELD_COPY
+// overrides field labels and adds help text, and SECTION_COPY adds section intros.
+// Prefer those to editing labels here; validation never depends on either.
 // =============================================================================
 
 export interface ChoiceOption<V extends string = string> {

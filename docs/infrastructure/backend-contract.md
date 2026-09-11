@@ -10,6 +10,8 @@ Product pages can be built entirely on the typed modules below, with no SQL, dir
 | `@/app/actions/applications` | Server Actions | `createApplication`, `saveApplication`, `submitApplication`, `updateApplicationStatus` |
 | `@/app/actions/reviews` | Server Actions | `saveReview`, `submitReview`, `revealApplicantIdentity`, `findNextUnreviewedApplication` |
 | `@/lib/auth/dal` | Server only | `getViewer`, `requireViewer`, `requireApplicant`, `requireOrganizer` |
+| `@/lib/auth/callback` | Anywhere | `AUTH_CALLBACK_ERROR_CODES`, `isAuthCallbackErrorCode`, `parseAuthCallbackParams`, `mapAuthCallbackError` for `/auth/callback` and the `/login?error=` notice |
+| `@/lib/env` | Server; `getSupabasePublicEnv` anywhere | `getSupabasePublicEnv`, `hasSupabasePublicEnv`, `getSiteUrl`, `InvalidSiteUrlError` |
 | `@/lib/data/applications` | Server only | `getMyApplication` |
 | `@/lib/data/organizer` | Server only | `getOrganizerDashboard`, `listApplications`, `getNextUnreviewedApplicationId`, `getReviewWorkspace`, `DataAccessError` |
 | `@/lib/actions/result`, `@/lib/actions/types` | Anywhere | `ActionResult`, `ActionError`, `ActionErrorCode`, `ACTION_ERROR_MESSAGES`, action payload types |
@@ -95,7 +97,7 @@ requireApplicant(): Promise<ApplicantViewer>; // Hacker or Judge; Organizers red
 requireOrganizer(): Promise<OrganizerViewer>; // Organizer; applicants redirect to /portal
 ```
 
-Call a guard at the top of each protected page or layout. `proxy.ts` refreshes the session cookie and optimistically sends signed-out visitors on protected paths to `/login?next=…`. It is a convenience only, not the authorization boundary: it does not check roles.
+Call a guard at the top of each protected page or layout. `proxy.ts` refreshes the session cookie and optimistically sends signed-out page loads (GET and HEAD) on protected paths to `/login?next=…` with no-store headers. Server Action POSTs are never redirected, so an expired session reaches the action and returns `unauthenticated` instead of the login page HTML. The proxy is a convenience only, not the authorization boundary: it does not check roles.
 
 ## Authentication actions (`@/app/actions/auth`)
 
@@ -112,7 +114,7 @@ Call a guard at the top of each protected page or layout. `proxy.ts` refreshes t
 - **Account role:** can only be `hacker` or `judge`. `organizer` fails validation here, and the database signup trigger rejects it for any other client.
 - **Sign-in redirect:** `next` is optional. When present it must be a string of at most 2048 characters (pass `undefined`, not `null`); otherwise `signIn` returns `validation_failed` with `fieldErrors.next` and does not sign in. A valid `next` is used only when it is a same-origin path allowed for the role. Otherwise `redirectTo` is the role home: `/portal` for applicants, `/organizer` for Organizers.
 - **Navigation:** actions do not redirect. Navigate to `redirectTo` in the UI after `ok: true`, for example with `router.push` or `router.refresh`. Auth cookies are set by the action.
-- **Email confirmation:** when it is enabled (the hosted default), `signUp` returns `requiresEmailConfirmation: true` and no session. See [environment-and-deployment.md](environment-and-deployment.md).
+- **Email confirmation:** when it is enabled (the hosted default), `signUp` returns `requiresEmailConfirmation: true` and no session. The email links to `<origin>/auth/callback`, with the origin from `getSiteUrl()`. The callback signs the user in and continues to `/onboarding`. See [environment-and-deployment.md](environment-and-deployment.md).
 
 ## Applicant application
 
@@ -353,7 +355,7 @@ The same Zod schemas run on the server. The client may use them for instant feed
 | `/` | none | `getViewer()` (optional) | none |
 | `/signup` | none | `getViewer()` to redirect signed-in users | `signUp` |
 | `/login` | none | `searchParams.next` | `signIn` |
-| `/auth/callback` | not implemented in Phase 1 (only needed if email confirmation is enabled) | none | none |
+| `/auth/callback` | none (GET Route Handler) | `code` only; `next` and token parameters are ignored | none. Exchanges the PKCE code for a session and redirects to `/onboarding`, or to `/login?error=<code>` (`link_expired`, `confirm_link_other_browser`, `invalid_link`, `auth_callback_failed`), always with no-store headers |
 | `/onboarding` | `requireApplicant()` | `getMyApplication()` | `updateProfile`, `createApplication` |
 | `/portal` | `requireApplicant()` | `getMyApplication()` | `signOut` |
 | `/portal/application` | `requireApplicant()` | `getMyApplication()`, `APPLICATION_FORMS[application.type]` | `saveApplication`, `submitApplication` |

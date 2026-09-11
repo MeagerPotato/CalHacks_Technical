@@ -64,6 +64,11 @@ export const LOCKED = {
 export const COPY = {
   meta: {
     description: "Apply to Cal Hacks as a Hacker or Judge and follow your application from launch to landing.",
+    titles: {
+      portal: "Portal",
+      application: "Your application",
+      mission: "Mission tracker",
+    },
   },
   common: {
     skipToContent: "Skip to main content",
@@ -146,6 +151,10 @@ export const COPY = {
     forbidden: { title: "Sign-up is unavailable", body: "Try again later." },
     unexpected_error: { title: "Something went wrong", body: "Try again in a moment." },
     network: { title: "We couldn't reach Launchpad", body: "Check your connection and try again." },
+    validation_failed: {
+      title: "Check your details",
+      body: "Something in this form couldn't be accepted. Reload the page and try again.",
+    },
   },
   onboarding: {
     title: "Confirm your account",
@@ -161,6 +170,7 @@ export const COPY = {
     greeting: (name: string | null) => (name ? `Welcome, ${name}` : "Welcome"),
     reference: (reference: string) => `Application ${reference}`,
     progressTitle: "Your application",
+    progressLabel: "Application progress",
     progressValue: (percent: number) => `${percent}% complete`,
     nextStep: "Next up",
     startCta: "Start application",
@@ -218,6 +228,7 @@ export const COPY = {
       nothingToSave: "All changes saved.",
       saving: "Saving…",
       submitting: "Submitting…",
+      submitted: "Application submitted.",
     },
     lastSaved: "Last saved",
     leaveUnsaved: "Some changes couldn't be saved. Leave this page anyway?",

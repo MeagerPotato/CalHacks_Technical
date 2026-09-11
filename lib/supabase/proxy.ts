@@ -5,11 +5,21 @@ import { getSupabasePublicEnv, hasSupabasePublicEnv } from "@/lib/env";
 import { ROUTES, isProtectedPath } from "@/lib/routes";
 import type { Database } from "@/types/database";
 
-const NO_STORE_HEADERS = ["cache-control", "expires", "pragma"] as const;
+// The login redirect depends on the session cookie, so it must never be cached. @supabase/ssr sends these
+// values when it writes cookies; they are also the fallback for a signed-out request that writes none.
+const NO_STORE_HEADERS = {
+  "cache-control": "private, no-cache, no-store, must-revalidate, max-age=0",
+  expires: "0",
+  pragma: "no-cache",
+} as const;
+
+// Only page loads are redirected. Server Action fetches (POST) follow redirects, so a 307 would
+// replace the action's `unauthenticated` result with the login page HTML.
+const REDIRECT_METHODS = new Set(["GET", "HEAD"]);
 
 /**
- * Refreshes the Supabase session cookies on every matched request and performs an optimistic
- * redirect to /login for protected paths when no valid session exists.
+ * Refreshes the Supabase session cookies on every matched request and performs an optimistic,
+ * uncacheable redirect to /login for GET and HEAD requests to protected paths when no valid session exists.
  *
  * This is a navigation convenience only. Authorization is enforced by the data access layer,
  * every Server Action, and Row Level Security.
@@ -48,7 +58,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const { data } = await supabase.auth.getClaims();
   const isSignedIn = typeof data?.claims?.sub === "string";
 
-  if (!isSignedIn && isProtectedPath(request.nextUrl.pathname)) {
+  if (!isSignedIn && REDIRECT_METHODS.has(request.method) && isProtectedPath(request.nextUrl.pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = ROUTES.login;
     loginUrl.search = "";
@@ -58,11 +68,8 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     for (const cookie of response.cookies.getAll()) {
       redirect.cookies.set(cookie);
     }
-    for (const header of NO_STORE_HEADERS) {
-      const value = response.headers.get(header);
-      if (value) {
-        redirect.headers.set(header, value);
-      }
+    for (const [header, fallback] of Object.entries(NO_STORE_HEADERS)) {
+      redirect.headers.set(header, response.headers.get(header) ?? fallback);
     }
     return redirect;
   }

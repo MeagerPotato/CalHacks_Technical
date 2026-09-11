@@ -9,6 +9,7 @@
 | `npm run test:unit` | The Vitest `unit` project. Needs no services. |
 | `npm run test:integration` | The Vitest `integration` project against local Supabase. Requires Docker and `npm run db:start`. |
 | `npm run test` | Both Vitest projects. |
+| `npm run test:e2e` | Playwright end-to-end and accessibility tests. Builds the app, serves it on port 3100, and signs real users up against local Supabase. Requires `npm run db:start`. Not part of `verify`. |
 | `npm run build` | `next build`, which type-checks again. |
 | `npm run verify` | Lint, typecheck, all tests, then the production build. |
 | `npm run db:advisors` | Supabase security and performance advisors against the local database. |
@@ -30,6 +31,19 @@ Pure TypeScript tests with no network or database:
 | `auth-validation.test.ts` | Signup (Hacker or Judge only), sign-in, and profile schemas. |
 | `application-config.test.ts` | Form and rubric configuration matches the schemas. |
 | `action-errors.test.ts` | Mapping of database and Auth errors to action error codes. |
+| `auth-callback.test.ts` | `GET /auth/callback`: code exchange to `/onboarding` (ignoring `next`), code length limits, mapping of expired, cross-browser, and unknown errors, redirects built from the request URL rather than forwarded host headers, and copy for every error code. |
+| `site-url.test.ts` | `getSiteUrl` precedence and validation for `SITE_URL` and the Vercel variables, and the `signUp` confirmation redirect, including a production build with no origin and an invalid `SITE_URL`. |
+| `proxy.test.ts` | `updateSession`: signed-out GET and HEAD redirects keep the path and query, send no-store headers, and clear stale cookies. Server Action POSTs pass through, signed-in requests pass with refreshed cookies, and missing variables skip Supabase. |
+| `fixtures.test.ts` | The shared application and rubric fixtures are valid, partial, or draft-only exactly as named. |
+| `local-supabase.test.ts` | The test harness guards: local-only API and database URLs, including a database URL whose `host` query parameter would send node-postgres to another host, and account cleanup refusing such a URL before connecting. |
+| `datetime.test.ts` | Event time zone formatting and timestamp views. |
+| `editor-values.test.ts`, `editor-steps.test.ts`, `editor-feedback.test.ts` | Editor value conversion and draft patches, step parsing and DOM ids, and the mapping from action errors to notices and error summaries. |
+| `view-model-fields.test.ts` | Field and section copy resolution, including hints generated from the form limits. |
+| `navigation-guard.test.ts` | The unsaved-changes navigation guard. |
+| `design-tokens.test.ts`, `view-contracts-ui.test.tsx` | Palette tokens and contrast pairs, text and fill tokens combined below 4.5:1 anywhere in `components/`, global focus and reduced-motion rules, and the DOM contract of every UI primitive and art slot. |
+| `editor-reducer.test.ts` | The editor reducer: save results rebased onto newer data, edits typed during a save, error clearing, just-completed sections, focus requests, locking, and submission phases. |
+| `view-models.test.ts` | Readiness and section-navigation states, answer summaries with option labels and missing text, mission views for every status (never an ETA or percentage), and portal views. |
+| `view-contracts-pages.test.tsx`, `view-contracts-application.test.tsx` | The DOM contract of the landing, auth, portal, and mission views, and of the editor, review, submitted, and liftoff views. Also that no class name anywhere in `components/` puts an underscore in a data or aria variant value, which Tailwind would read as a space. |
 
 ## Integration tests (`tests/integration`)
 
@@ -58,7 +72,7 @@ These run the real Server Actions and data-access functions against local Supaba
 
 - **`global-setup.ts`**
   - Reads the local URL, publishable key, and database URL from `supabase status` (see [environment-and-deployment.md](environment-and-deployment.md) for overrides).
-  - Refuses non-local hosts.
+  - Refuses non-local hosts. The database host is read back the way node-postgres resolves it, so a `host` query parameter cannot point a local-looking URL at a remote database.
   - Deletes every `@launchpad.test` account before and after the run.
   - Waits until the API accepts a new session.
 - **`setup.ts`**
@@ -71,13 +85,42 @@ These run the real Server Actions and data-access functions against local Supaba
   - Provides `queryRows()`, which uses the `postgres` role for setup and verification only.
 - **Execution.** Files run one at a time because they share the database. Test data never modifies seed rows.
 
-### Not covered by automated tests
+## End-to-end tests (`e2e`)
 
-- Cookie handling in `lib/supabase/server.ts` and session refresh in `lib/supabase/proxy.ts`. The production build compiles them. A manual `next start` check against local Supabase at handoff showed:
+Playwright drives a production build (`next build`, then `next start -p 3100`) in Chromium against local Supabase. Reduced motion is emulated unless a test turns it off.
+
+- Every account is created by a real signup.
+- Organizer steps run through a promoted Organizer's own publishable-key client, so RLS and the workflow triggers apply exactly as they will for the Phase 3 pages.
+
+| File | Covers |
+|---|---|
+| `auth.spec.ts` | Signup offers only Hacker and Judge and rejects a tampered Organizer value. Also: signup through onboarding into the editor, a wrong password, `next` redirects with an unsafe-`next` fallback, and sign-out. |
+| `applicant-journey.spec.ts` | The Hacker journey in order: a draft that survives a reload, Save & continue focus, an invalid answer that keeps the section while valid answers save (and the `beforeunload` warning before reloading), browser Back saving the section being left, the multi-choice limit, portal progress and Launch Readiness links, an incomplete submission's error summary and links, a complete submission through liftoff to the tracker, and the read-only submitted view. |
+| `judge.spec.ts` | A Judge who signs up through the UI, onboards, saves a partial draft, sees Launch Readiness move from not started to in progress, and submits. Also: Judge questions at 375 px with the section menu and keyboard saving, and a complete seeded Judge submission. |
+| `mission-states.spec.ts` | The tracker for submitted, in review, Accepted, and Waitlisted applications, driven by real organizer workflow writes and timestamps. Drafts redirect to the portal, and the decision is revealed only after the landing. |
+| `access.spec.ts` | Signed-out redirects that keep the destination, Organizers kept out of the portal, and applicants kept out of organizer pages and other applicants' answers. Also: the development gallery is hidden in production, and the callback shows its error notice. |
+| `a11y-keyboard.spec.ts` | axe WCAG 2.1 A and AA checks on public pages and on applicant pages in their key states (with the `beforeunload` warning when leaving unsaved answers), the skip link and focus ring (focus moves without a fragment history entry), and a keyboard-only signup, onboarding, error fix, and submission. |
+| `editor-recovery.spec.ts` | Editor failures, with Server Action calls intercepted in the browser. A dropped connection: a failed save's Try again keeps focus and repeats the notice title in the live status (also when the section has invalid answers and the error summary takes focus), a retry that succeeds returns focus to the section heading, Check status after an unconfirmed submission keeps focus in the editor, and Try again after a failed background save saves the draft without submitting. A new deployment (an unrecognized action): the retry's Reload notice receives focus. |
+
+`e2e/global-setup.ts`:
+
+- refuses a non-local Supabase, including the database host as node-postgres resolves it;
+- checks that `.env.local` points at the same local stack;
+- deletes `@launchpad-e2e.test` accounts.
+
+Set `E2E_REUSE_SERVER=1` to reuse a server that is already running on port 3100.
+
+`package.json` pins `playwright-core` with `overrides`, so `@axe-core/playwright` and `@playwright/test` share one version and one `Page` type. When you upgrade `@playwright/test`, update the override to the same version.
+
+## Not covered by automated tests
+
+- Cookie handling in `lib/supabase/server.ts` has no isolated test; the E2E suite exercises it with real sessions. At the Phase 1 handoff, a manual `next start` check against local Supabase also showed:
   - Signed-out requests to `/portal`, `/onboarding`, and `/organizer/applications?status=submitted&page=2` get a 307 redirect to `/login?next=…` that keeps the path and query.
   - A request with a valid `@supabase/ssr` session cookie passes through.
   - A forged auth cookie is cleared (`Max-Age=0`) and redirected with `no-store` cache headers.
   - `/` is not redirected.
   - The proxy does not check roles. An applicant session reaches `/organizer`, and the page guard (`requireOrganizer`) must redirect it.
-- The effect of `revalidatePath` on rendered pages.
-- Any product UI (Phase 2).
+- The effect of `revalidatePath` on rendered pages is covered only indirectly, by E2E flows that reload or navigate after a save or submission.
+- Editor failures that need a server error rather than a dropped connection, such as `conflict` ("Reload latest") or `rate_limited`, are covered by the reducer and feedback unit tests only. `editor-recovery.spec.ts` covers the network paths.
+- Visual appearance. The E2E suite checks behavior, the DOM contract, and axe rules, not pixels, so look-and-feel changes need a manual pass on `/dev/gallery` and the real pages.
+- Organizer pages (Phase 3).

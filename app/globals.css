@@ -1,1 +1,144 @@
 @import "tailwindcss";
+
+/*
+ * Launchpad design tokens (PROJECT_PLAN.md section 13).
+ *
+ * The semantic color names below are frozen: components, tests/unit/design-tokens.test.ts, and the Astra handoff
+ * depend on them. Values may change only while the contrast test stays green.
+ *
+ * `static` makes Tailwind emit every variable even when no utility uses it, because the plain CSS rules in this file
+ * and the art placeholders read these variables directly.
+ */
+@theme static {
+  /* Palette */
+  --color-navy: #14233b;
+  --color-cream: #fff8ed;
+  --color-sky: #9edae5;
+  --color-coral: #ef6a5b;
+  --color-gold: #f6c453;
+  --color-evergreen: #2d6a61;
+  --color-white: #ffffff;
+
+  /* Semantic colors (frozen names). Navy text on coral; coral is never text; no white text on coral, gold, or sky. */
+  --color-page: var(--color-cream);
+  --color-surface: var(--color-white);
+  --color-ink: var(--color-navy);
+  --color-border: var(--color-navy);
+  --color-action: var(--color-coral);
+  --color-on-action: var(--color-navy);
+  --color-success: var(--color-evergreen);
+  --color-on-success: var(--color-white);
+  --color-highlight: var(--color-gold);
+  --color-accent: var(--color-sky);
+  --color-dark: var(--color-navy);
+  --color-on-dark: var(--color-cream);
+  --color-focus: var(--color-navy);
+  --color-focus-on-dark: var(--color-sky);
+  --color-danger-edge: var(--color-coral);
+
+  /* Shape */
+  --radius-card: 1.25rem;
+  --radius-control: 0.75rem;
+  --shadow-card: 0 1px 2px 0 rgb(20 35 59 / 0.08);
+
+  /* Motion. LIFTOFF_DURATION_MS and LANDING_DURATION_MS in components/art/motion.ts must equal these durations. */
+  --duration-liftoff: 2400ms;
+  --duration-landing: 1600ms;
+  --duration-reveal: 400ms;
+  /* Two alternating cycles (4.8s) end back at rest: autoplaying motion must stop within 5 seconds (WCAG 2.2.2). */
+  --animate-float: float 2.4s ease-in-out 2 alternate;
+}
+
+/* next/font defines --font-body-face and --font-display-face on <html> (app/fonts.ts). */
+@theme inline static {
+  --font-sans: var(--font-body-face), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), var(--font-body-face), ui-sans-serif, sans-serif;
+}
+
+/* Keyframes sit outside @theme so Tailwind always emits them: plain CSS rules below use them directly. */
+@keyframes float {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes draw-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    scroll-padding-top: 1.5rem;
+  }
+
+  body {
+    background-color: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+
+  /* Never remove this ring with outline utilities; restyle it here instead. */
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  [data-surface="dark"] :focus-visible {
+    outline-color: var(--color-focus-on-dark);
+  }
+
+  /* Reduced motion: every animation and transition jumps to its end state, with no delays. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      animation-delay: 0s !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* The decision card is in the DOM immediately but appears only after the landing moment. */
+    [data-reveal="after-landing"] {
+      animation: reveal var(--duration-reveal) ease-out var(--duration-landing) backwards;
+    }
+
+    /* A readiness item's progress line draws in once when its section has just been completed. */
+    [data-just-completed="true"] [data-progress-line] {
+      transform-origin: left center;
+      animation: draw-in var(--duration-reveal) ease-out both;
+    }
+  }
+}

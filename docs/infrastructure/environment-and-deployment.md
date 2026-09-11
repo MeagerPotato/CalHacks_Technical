@@ -2,14 +2,22 @@
 
 ## Environment variables
 
-The application reads exactly two variables:
+The application reads two required variables and one optional one:
 
 | Variable | Local value | Hosted value |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `http://127.0.0.1:54321` | `https://<project-ref>.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_…` from `supabase status` | Dashboard → Project Settings → API Keys → publishable key |
+| `SITE_URL` (optional, server-only) | Leave unset; `http://localhost:3000` is used | Leave unset on Vercel, or set the public origin when the app is served from another domain |
 
-- **Browser-safe by design.** Both values may appear in the browser. Authorization comes from the user's session and Row Level Security.
+- **Confirmation-link origin.** `signUp` sends Supabase an `emailRedirectTo` of `<origin>/auth/callback`. `getSiteUrl()` in `lib/env.ts` chooses the origin in this order:
+  1. `SITE_URL`, which must be an `http://` or `https://` URL (any path is ignored);
+  2. `VERCEL_PROJECT_PRODUCTION_URL` on Vercel Production;
+  3. `VERCEL_URL` on Vercel Preview;
+  4. `http://localhost:3000` outside production builds.
+
+  A production build with none of these sends no redirect, and Supabase uses its own Site URL. The request `Host` header is never used. An invalid value makes `signUp` return `unexpected_error` instead of emailing a broken link. Vercel sets the `VERCEL_*` variables itself.
+- **Browser-safe by design.** Both `NEXT_PUBLIC_` values may appear in the browser. Authorization comes from the user's session and Row Level Security.
 - **Fixed at build time.** Next.js inlines `NEXT_PUBLIC_` values during `next build`, so after changing them on Vercel you must redeploy.
 - **Validated before use.** `lib/env.ts` checks that both values are present before creating a Supabase client. It also rejects a key that looks like a secret key (`sb_secret_…`) or a legacy JWT with `role: service_role`.
 - **No privileged key.** The app never uses a service-role or secret key, and none should be added.
@@ -55,15 +63,18 @@ Other database commands:
 
 Local Auth settings in `supabase/config.toml`:
 
-- Email confirmation is off.
+- Email confirmation is off, so local signups are signed in immediately. `/auth/callback` still handles confirmation links if you turn it on.
 - Minimum password length is 8, matching the Zod schema.
-- Site URL is `http://localhost:3000`.
+- Site URL is `http://localhost:3000`. The redirect allow list also includes `/auth/callback` on port 3000 (`next dev`) and port 3100 (the E2E server).
+- Sign-ups plus sign-ins are limited to 300 per 5 minutes per IP (the hosted default is 30), so the integration and E2E suites can create many accounts.
 - Realtime, Storage, Edge Functions, and Analytics are disabled.
 - Studio runs at http://127.0.0.1:54323.
 
+After changing `supabase/config.toml`, restart the stack with `npm run db:stop` and then `npm run db:start`. Local data is kept.
+
 ### Local Organizer account
 
-1. Create the account yourself with Supabase Auth, for example in Studio → Authentication → Add user, or with `supabase.auth.signUp`. Phase 1 has no signup page; once the product phase adds `/signup`, that works too. Do not start an application with this account.
+1. Create the account yourself. Sign up at http://localhost:3000/signup and stop at onboarding without starting an application, or use Studio → Authentication → Add user.
 2. Immediately, in Studio's SQL editor, run:
 
    ```sql
@@ -93,14 +104,16 @@ No hosted project has been created or linked in Phase 1. When deploying:
 
 3. **Configure Auth in the dashboard.** `supabase/config.toml` holds local values, so do not run `supabase config push` without reviewing `supabase config diff` first. Set:
 
-   - **Authentication → Sign In / Providers → Email:** keep email signup enabled and turn off **Confirm email**. Phase 1 has no email confirmation route. If confirmation stays on, `signUp` returns `requiresEmailConfirmation: true` and the user cannot sign in until confirmed. With confirmation off, email addresses are not verified, which is why the Organizer account must be created before the URL is shared (step 4).
+   - **Authentication → Sign In / Providers → Email:** keep email signup enabled, then decide whether **Confirm email** stays on:
+     - **On (the hosted default).** `signUp` returns `requiresEmailConfirmation: true`, the signup page asks the applicant to check their email, and the link completes at `/auth/callback` in the same browser. Email addresses are verified. Supabase's built-in email service is meant for testing: it has a low hourly limit and may deliver only to your organization's members. Configure custom SMTP before a real event.
+     - **Off.** Applicants are signed in immediately, but email addresses are not verified. That is why the Organizer account must be created before the URL is shared (step 4).
    - **Password minimum length:** 8.
    - **URL Configuration:**
      - Site URL: the production URL.
-     - Redirect URLs: `http://localhost:3000/**`, `https://*-<vercel-team-slug>.vercel.app/**`, and the production URL.
+     - Redirect URLs: `http://localhost:3000/**`, `https://*-<vercel-team-slug>.vercel.app/**`, and `https://<production-domain>/auth/callback`. Supabase refuses a confirmation redirect that is not on this list.
    - **Rate Limits:** the default is 30 sign-ups plus sign-ins per 5 minutes per IP. Server Actions call Supabase Auth from Vercel's servers, so many visitors may share an IP. Raise the limit if a live demo needs it.
 
-4. **Create the Organizer account.** Create the user in **Authentication → Users** with auto-confirm. Once the product phase ships a signup page, you can instead sign up through the deployed app without starting an application. Then immediately run in the SQL editor:
+4. **Create the Organizer account.** Create the user in **Authentication → Users** with auto-confirm. You can instead sign up through the deployed app and stop at onboarding without starting an application. Then immediately run in the SQL editor:
 
    ```sql
    select private.promote_to_organizer('organizer@your-domain.example');

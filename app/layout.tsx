@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
+
+import { SkipToContent } from "@/app/_components/SkipToContent";
+import { COPY, LOCKED } from "@/content/copy";
+
+import { fontVariables } from "./fonts";
 import "./globals.css";
 
-// Framework layout kept deliberately unstyled. Fonts, colors, and visual design are
-// owned by the frontend phase.
 export const metadata: Metadata = {
-  title: "Launchpad",
+  title: { default: LOCKED.brand, template: `%s | ${LOCKED.brand}` },
+  description: COPY.meta.description,
 };
 
+/** Root layout: font variables on `<html>`, and the skip link as the first focusable element on every page. */
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className={fontVariables}>
+      <body>
+        <SkipToContent />
+        {children}
+      </body>
     </html>
   );
 }
