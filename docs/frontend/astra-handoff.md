@@ -1,6 +1,6 @@
-# Astra handoff: creative pass, round 2
+# Astra handoff: final creative pass
 
-> **Status:** Astra delivered round 2 on 2026-09-11 with no open requests, and it passed the full test suites. The next pass starts with [Queued for the next pass](#queued-for-the-next-pass).
+> **Status:** Round 2 shipped on 2026-09-11. This final pass is short polish; start with [Final pass tasks](#final-pass-tasks-in-priority-order).
 
 The product works end to end:
 
@@ -11,7 +11,7 @@ The product works end to end:
 - the landing page, with the Cal Hacks 13.0 mission timeline and live countdowns;
 - the organizer pages: the Mission Control dashboard, the applications table, and the blind review workspace.
 
-Your first pass set the brand, art, motion, and polish. Round 2 adds new surfaces that currently use the functional baseline. They need your design, within the same creative-only scope:
+Your first two passes set the brand, art, and motion, and designed the round 2 surfaces. This final pass polishes what is left, within the same creative-only scope:
 
 1. **Art.** Original illustrations in `components/art/`, plus decorative `aria-hidden` accents inside views.
 2. **Motion.** Choreography beyond the baseline, following the motion rules below.
@@ -21,7 +21,7 @@ Your first pass set the brand, art, motion, and polish. Round 2 adds new surface
 
 Claude owns everything else: routes, data, state, validation, focus management, accessibility behavior, and tests. If a creative idea needs a change outside your write set, add it to [astra-requests.md](astra-requests.md) and ship a fallback.
 
-## What is new in round 2
+## Surfaces added in round 2
 
 | Surface | Component | Where to see it |
 |---|---|---|
@@ -56,39 +56,29 @@ npm run dev
 
 To click through real pages, start Docker Desktop, run `npm run db:start`, and create `.env.local` as described in `docs/infrastructure/environment-and-deployment.md`. Seed accounts cannot sign in, so sign up a new Hacker or Judge (choose both to see the switcher). Claude gives the user a local Organizer login separately.
 
-## Queued for the next pass
+## Final pass tasks, in priority order
 
-Start here next time. Each item is inside your write set.
+Your usage is limited, so do these in order and stop when they are done. Each one is inside your write set.
 
 1. **Applications filter row.** On the organizer applications page at 1280px, the five filters share one row (`xl:grid-cols-5` in `components/organizer/ApplicationFilters.tsx`). The Status select clips its default option, `ORGANIZER_COPY.applications.anyStatus` ("All statuses except draft"), to "All statuses except dra".
    - Make every filter show its longest option in full at 1280px and wider. You could rebalance the columns, wrap the filters onto two rows, or tighten the option copy in voice.
    - Keep the labels, hints, `select` elements, and the Apply filters button.
    - See it in the applications section of `/dev/gallery/organizer`.
+2. **Timeline flight path.** At 1280px the dashed path in `MissionTimeline` runs behind the four stop cards, so only short dashes show between them. Make it read as one continuous route joining the stops, for example by drawing it in the gaps or above the cards.
+   - Keep it decorative (`aria-hidden`) and static. The rocket at the current stop never loops.
+   - At 375px, where the stops stack, the timeline must still read as a sequence.
+3. **Mission clock at 375px.** In `CountdownPanel`, the small gold dot sits beside the heading and reads like a stray mark. Move it into the decoration, or hide it on small screens.
+4. **Clear themed copy.** Keep the voice, but make each themed phrase understandable on its own, especially `COPY.schedule.timeline.toBeAnnounced` ("Awaiting coordinates") and the countdown captions (`COPY.schedule.countdown.launch.caption` and `COPY.schedule.countdown.landing.caption`). Never write a date or time into copy.
+5. **QA.** Check `/`, `/dev/gallery`, and `/dev/gallery/organizer` at 375px and 1280px, with reduced motion on and off. Tab through each page to confirm focus rings are visible, including on dark panels (`data-surface="dark"`).
 
-## Round 2 tasks, in priority order
+The judging rubric may change the scorecard's dimensions later. `Scorecard` and `RubricScoreField` render the dimensions from data, so your styling holds for any list of dimensions.
 
-Your usage is limited, so the list starts with what the demo shows most.
+### Rules carried over from round 2
 
-1. **Application switcher.** Replace the type badge position in `PortalWelcome` with a segmented "Hacker | Judge" pill, as in the user's sketch.
-   - The application on screen is filled: **Hacker in coral red** (`bg-action text-on-action`) and **Judge in sky blue** (`bg-accent text-ink`).
-   - The application not on screen stays on the **beige page color** (`bg-page text-ink`).
-   - Restyle through `SWITCHER_CURRENT_CLASSES` and `SWITCHER_OTHER_CLASSES`, keeping their keys and the contrast rules. The current link must stay distinguishable without color; its `aria-current="page"` is your styling hook (for example a heavier border or a check icon).
-   - The switcher shows only when the account holds both applications. A single-application account keeps the type badge and has no switcher. Everything else on the dashboard stays roughly the same.
-2. **Mission timeline.** Give the landing page's four stops (Applications open, Application deadline, Results released, Event dates) a rocket and space theme: for example a flight path or orbit joining the stops, planets or beacons for stops, and a rocket marker at the current stop.
-   - Style states with `data-state` (`complete`, `active`, `upcoming`) and `data-current="true"`.
-   - Every stop keeps its name, date, and state as text. Decorative art is `aria-hidden`.
-   - It must read as a sequence at 375px (stacked) and at 1280px (a row).
-3. **Countdowns.** Design the "Mission clock" panel as a mission-control readout, with the launch timer (application deadline) and the landing timer (event start) side by side.
-   - The digits change every second. **Do not animate each tick**, because that would be continuous motion. A one-time entrance under `motion-safe:` is fine.
-   - Keep the pause toggle visible and easy to find (WCAG 2.2.2). Style its pressed state with `aria-pressed:` or the panel's `data-paused="true"`.
-   - A complete countdown (`data-state="complete"`) shows its complete text instead of digits.
-4. **Required asterisk and the country picker.**
-   - The asterisk stays red: `text-required`, `--color-required`, and at least 4.5:1 on page and surface (the contrast test checks both).
-   - Style the country picker's popup, active option (`data-active="true"`), and selected option (`aria-selected`) through class strings. The input keeps `INPUT_CLASSES`.
-5. **Organizer pages.** Restyle the dashboard, table, and review workspace within [organizer.md](organizer.md#what-astra-may-and-may-not-change). Keep the radar's table alternative, the counts beside bars, and the blind-mode status text.
-6. **Signup and onboarding.** Polish the Hacker and Judge checkboxes on `/signup` and the "Applying as" badges on `/onboarding`.
-7. **Voice.** Rewrite the new `COPY.schedule`, `COPY.portal.switcherLabel`, and `ORGANIZER_COPY` values in the product voice. Dates and schedule facts come from `lib/event.ts`; never write a date or time into copy.
-8. **QA.** At 375px and 1280px, with reduced motion on and off, check `/`, both galleries, and the real flow if you run Supabase. Tab through each page to confirm focus rings are visible.
+- The switcher's current application stays distinguishable without color. `aria-current="page"` is the styling hook.
+- Every timeline stop keeps its name, date, and state as text.
+- The countdown pause toggle stays visible and easy to find (WCAG 2.2.2), and a complete countdown shows its text instead of digits.
+- On the organizer pages, keep the radar's table alternative, the counts beside the bars, and the blind-mode status text.
 
 ## Your write set
 

@@ -157,7 +157,10 @@ The repository does not create or link a hosted project. When deploying:
 ## Vercel
 
 1. **Import the repository.** Vercel detects Next.js automatically, so no `vercel.json` is needed.
-2. **Add the variables.** Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for **Production** and **Preview** (and **Development** if you use `vercel env pull`). Leave `SITE_URL` unset. Redeploy after any change.
+2. **Add the variables.** Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for **Production** and **Preview** (and **Development** if you use `vercel env pull`), with the type **Config**. Leave `SITE_URL` unset. Redeploy after any change.
+   - **Why Config.** On 2026-09-11 both variables were the **Secret** (sensitive) type, and the app never received them. Every page that uses Supabase failed with "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" in the runtime logs, while the landing page still worked.
+   - **Changing the type.** Vercel can't change a Secret variable's type, so remove it and add it again.
+   - **If Config is unavailable.** The team policy **Settings → Security & Privacy → Enforce Sensitive Environment Variables** may be forcing new variables to Secret.
 3. **Node.js version.** Vercel takes it from `engines` (`>=22.12.0`), which currently resolves to Node.js 24.
 4. **Function region.** Set it close to the Supabase region under **Settings → Functions**. `proxy.ts` runs on the Node.js runtime and is deployed as Routing Middleware in every region.
 5. **Deployment Protection.** Preview deployments may require Vercel login. Run signed-out and incognito checks, including a full signup with a real inbox, against the production URL.
