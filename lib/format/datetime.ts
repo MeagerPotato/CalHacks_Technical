@@ -32,6 +32,16 @@ const EVENT_NUMERIC_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
 
 const RANGE_DASH = "–";
 
+// A calendar date such as a birthdate names a day, not an instant, so it is formatted in UTC to avoid any shift.
+const CALENDAR_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
+const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 // A date, a time, optional seconds and fraction, and an explicit offset. Without an offset, ECMAScript would read the
 // value in the server's local time zone, so the same string could name different instants on different hosts.
 const ISO_INSTANT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -101,6 +111,25 @@ export function toTimestampView(iso: string | null | undefined): TimestampView |
     return null;
   }
   return { iso: new Date(time).toISOString(), label: formatInstant(time) };
+}
+
+/**
+ * Formats a YYYY-MM-DD calendar date, for example "2006-02-14" as "Feb 14, 2006". Returns null for a missing value or
+ * anything that is not a real date, so an impossible day is never rolled into another one.
+ */
+export function formatCalendarDate(value: string | null | undefined): string | null {
+  const match = typeof value === "string" ? CALENDAR_DATE_PATTERN.exec(value.trim()) : null;
+  if (match === null) {
+    return null;
+  }
+  const [year, month, day] = match.slice(1).map(Number);
+  const time = Date.UTC(year, month - 1, day);
+  const date = new Date(time);
+  // Date.UTC rolls impossible days forward and maps years below 100 into the 1900s; both change a field.
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null;
+  }
+  return CALENDAR_DATE_FORMAT.format(time).replace(WHITESPACE_RUN, " ");
 }
 
 interface CalendarDay {

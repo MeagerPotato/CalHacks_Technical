@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { APPLICATION_DEADLINE, EVENT_SCHEDULE, EVENT_TIME_ZONE } from "@/lib/event";
-import { formatEventDateTime, toDateRangeView, toDateView, toTimestampView } from "@/lib/format/datetime";
+import {
+  formatCalendarDate,
+  formatEventDateTime,
+  toDateRangeView,
+  toDateView,
+  toTimestampView,
+} from "@/lib/format/datetime";
 
 describe("event constants", () => {
   it("uses Pacific time, and every schedule date is null or a parseable instant, in schedule order", () => {
@@ -151,4 +157,19 @@ describe("toDateRangeView", () => {
     expect(toDateRangeView("2026-10-23T00:00:00-07:00", "2026-10-23T00:00:00-07:00")).toBeNull();
     expect(toDateRangeView("2026-10-26T00:00:00-07:00", "2026-10-23T00:00:00-07:00")).toBeNull();
   });
+});
+
+describe("formatCalendarDate", () => {
+  it("formats a YYYY-MM-DD date without shifting the day", () => {
+    expect(formatCalendarDate("2006-02-14")).toBe("Feb 14, 2006");
+    expect(formatCalendarDate("2008-02-29")).toBe("Feb 29, 2008");
+    expect(formatCalendarDate(" 1999-12-31 ")).toBe("Dec 31, 1999");
+  });
+
+  it.each([null, undefined, "", "2006-02-30", "2007-02-29", "2006-13-01", "0099-01-01", "2006-2-14", "2006-02-14T00:00:00Z"])(
+    "returns null for %j",
+    (value) => {
+      expect(formatCalendarDate(value)).toBeNull();
+    },
+  );
 });

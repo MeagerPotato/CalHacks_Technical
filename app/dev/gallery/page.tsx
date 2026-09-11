@@ -108,6 +108,16 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
   return (
     <main id="main" tabIndex={-1}>
       <GallerySection
+        id="gallery-organizer-link"
+        title="Organizer pages"
+        description="The organizer dashboard, applications table, and review workspace have their own gallery."
+      >
+        <AppLink href={`${GALLERY_PATH}/organizer`} variant="secondary">
+          Open the organizer gallery
+        </AppLink>
+      </GallerySection>
+
+      <GallerySection
         id="gallery-primitives"
         title="Buttons, links, badges, progress, timestamps"
         description="Primitive variants and states."
