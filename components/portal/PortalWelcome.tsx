@@ -12,7 +12,7 @@ export function PortalWelcome({ view }: PortalWelcomeProps) {
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <Sticker name="patch" />
-        <h1 className="text-3xl font-bold sm:text-4xl">{view.greeting}</h1>
+        <h1 className="min-w-0 wrap-anywhere text-3xl font-bold sm:text-4xl">{view.greeting}</h1>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Badge tone="neutral">{view.typeLabel}</Badge>

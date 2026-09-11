@@ -247,7 +247,7 @@ export const COPY = {
     editSection: (sectionLabel: string) => `Edit ${sectionLabel}`,
     agreementAccepted: "Accepted",
     agreementNotAccepted: "Not accepted",
-    launchMessage: "You built it. You launched it. Your application is on its way to Mission Control.",
+    launchMessage: "Your application is on its way to Mission Control.",
   },
   submitted: {
     title: "Your submitted application",

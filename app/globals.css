@@ -47,7 +47,6 @@
   --duration-reveal: 400ms;
   /* Two alternating cycles (4.8s) end back at rest: autoplaying motion must stop within 5 seconds (WCAG 2.2.2). */
   --animate-float: float 2.4s ease-in-out 2 alternate;
-  --animate-spin: spin 1s linear 4;
 }
 
 /* next/font defines --font-body-face and --font-display-face on <html> (app/fonts.ts). */
@@ -144,22 +143,54 @@
   }
 }
 
-/* Workshop surfaces and a finite, transform-only motion vocabulary. */
+/*
+ * Workshop surfaces and a finite, transform-only motion vocabulary.
+ *
+ * Textures never sit behind text as a background-image: axe cannot measure contrast over one, and
+ * e2e/support/ui.ts fails when it has to skip that check. The paper dots and the card rivet are pseudo-elements, and
+ * the heading over the readiness graph paper has an opaque fill.
+ */
 @layer base {
-  body { background-image: radial-gradient(rgb(20 35 59 / .065) .65px, transparent .65px); background-size: 8px 8px; }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: radial-gradient(rgb(20 35 59 / .065) .65px, transparent .65px);
+    background-size: 8px 8px;
+  }
   h1, h2, h3 { letter-spacing: -.035em; text-wrap: balance; }
   p { text-wrap: pretty; }
   ::selection { background: var(--color-sky); color: var(--color-navy); }
 }
 @utility workshop-card {
   position: relative;
-  background-image: radial-gradient(circle at calc(100% - 14px) 14px, var(--color-navy) 1.5px, transparent 2px);
+  &::after {
+    content: "";
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background-color: var(--color-navy);
+    pointer-events: none;
+  }
 }
 @utility pressable {
+  position: relative;
   box-shadow: 0 3px 0 var(--color-navy);
   transition: transform 160ms ease-out;
-  @media (hover: hover) { &:hover { transform: translateY(-2px); } }
+  /* A transform moves the hit area with the face. This transparent layer covers the ground the face just left, so a
+     click that starts near an edge still lands on the control. */
+  &::after { content: ""; position: absolute; inset: 0; }
+  @media (hover: hover) {
+    &:hover { transform: translateY(-2px); }
+    &:hover::after { bottom: -4px; }
+  }
   &:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--color-navy); }
+  &:active::after { top: -6px; }
   &:disabled, &[aria-disabled="true"] { transform: none; box-shadow: none; }
 }
 @utility landing-title {

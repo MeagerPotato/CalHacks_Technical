@@ -239,6 +239,11 @@ describe("design tokens", () => {
     expect(toMilliseconds(resolveValue("--duration-liftoff"))).toBe(LIFTOFF_DURATION_MS);
     expect(toMilliseconds(resolveValue("--duration-landing"))).toBe(LANDING_DURATION_MS);
   });
+
+  it("leaves Tailwind's infinite spin in place for loading spinners", () => {
+    // A spinner marks work that is still running. A finite one stops mid-save, and the page looks frozen.
+    expect(CSS).not.toMatch(/--animate-spin\s*:/);
+  });
 });
 
 describe("global motion and focus rules", () => {

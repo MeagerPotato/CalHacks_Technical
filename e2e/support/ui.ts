@@ -67,7 +67,13 @@ export async function tabTo(page: Page, target: Locator, maxPresses = 60): Promi
   await expect(target).toBeFocused();
 }
 
-/** Fails on any WCAG 2.1 A or AA violation reported by axe. */
+// axe reports contrast as incomplete, not as a violation, when a background image or gradient sits behind text.
+const UNMEASURED_CONTRAST_KEYS = new Set(["bgImage", "bgGradient"]);
+
+/**
+ * Fails on any WCAG 2.1 A or AA violation reported by axe, and on text whose contrast axe could not measure because a
+ * background image or gradient sits behind it.
+ */
 export async function expectNoAxeViolations(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   const violations = results.violations.map((violation) => ({
@@ -76,4 +82,16 @@ export async function expectNoAxeViolations(page: Page): Promise<void> {
     targets: violation.nodes.map((node) => node.target.join(" ")),
   }));
   expect(violations, `axe violations on ${page.url()}`).toEqual([]);
+
+  const unmeasured = results.incomplete
+    .filter((result) => result.id === "color-contrast")
+    .flatMap((result) => result.nodes)
+    .filter((node) =>
+      node.any.some((check) => {
+        const key = (check.data as { messageKey?: unknown } | null | undefined)?.messageKey;
+        return typeof key === "string" && UNMEASURED_CONTRAST_KEYS.has(key);
+      }),
+    )
+    .map((node) => node.target.join(" "));
+  expect(unmeasured, `contrast not measured over a background image on ${page.url()}`).toEqual([]);
 }

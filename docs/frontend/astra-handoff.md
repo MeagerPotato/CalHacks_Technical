@@ -198,6 +198,8 @@ Contrast rules:
 - **Focus rings and edges, at least 3:1:** focus on page, focus on surface, focus-on-dark on dark, danger-edge on surface, and border on page.
 - **Class strings:** it scans every class string in `components/**`. It fails on `text-coral`, `text-action`, or `text-danger-edge`. It also fails when a text token and a fill token apply in the same state (variants such as `hover:` or `data-[...]:` included) with less than 4.5:1 contrast, for example `bg-success text-ink` or `bg-accent text-on-dark`. On evergreen use `text-on-success`; on gold, sky, coral, or white use `text-ink` or `text-on-action`.
 
+Textures need the same care. axe cannot measure contrast over a `background-image` or gradient, and `expectNoAxeViolations` in `e2e/support/ui.ts` fails when text sits on one. Paint a texture on a pseudo-element, as the body's paper dots (`body::before`) and the card rivet (`::after`) do, or give the text an opaque fill above it, as the Launch Readiness heading does.
+
 ## Art slots
 
 Every slot is a server component with no hooks. Keep the props, keep art decorative (`aria-hidden`), and keep a fixed aspect ratio so nothing shifts while images load.
@@ -221,6 +223,8 @@ Every slot is a server component with no hooks. Keep the props, keep art decorat
 - **Landing.** `--duration-landing` must equal `LANDING_DURATION_MS`. The decision card has `data-reveal="after-landing"` and fades in after that delay. The decision text is in the DOM from the start, so screen readers never wait for the animation.
 - **Just completed.** When a section has just been completed, `[data-just-completed="true"] [data-progress-line]` draws the readiness progress line once.
 - **Autoplay limit.** Autoplaying motion must stop within 5 seconds (WCAG 2.2.2). `--animate-float` runs two alternating cycles (4.8 seconds) and ends at rest; keep any loop you add finite too. Nothing may flash more than three times per second.
+- **Loading spinners.** `animate-spin` marks work that is still running, so it keeps Tailwind's infinite `--animate-spin`. Do not override that token: a spinner that stops mid-save looks frozen. A unit test checks this.
+- **Pressed states.** `pressable` lifts a control on hover and sinks it on press. A transform moves the hit area too, so the utility's transparent `::after` layer covers the ground the face just left. If you change the offsets, resize that layer to match. An end-to-end test clicks 1px inside the top and bottom edges.
 - **Performance.** Animate `transform` and `opacity` only.
 
 ## Tasks, in priority order
