@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { COPY, LOCKED } from "@/content/copy";
-import { ROUTES } from "@/lib/routes";
+import { ROUTES, portalRoute } from "@/lib/routes";
 
 import { validHackerResponses, validJudgeResponses } from "../tests/fixtures/applications";
 import { createAccount, createOrganizer, seedApplication, submitViaApi } from "./support/accounts";
@@ -43,7 +43,7 @@ test("drafts go back to the portal, and a Waitlisted decision is revealed only a
   const applicationId = await seedApplication(user, "judge", validJudgeResponses);
 
   await signInViaUi(page, user, ROUTES.portalMission);
-  await expectPathAndQuery(page, ROUTES.portal);
+  await expectPathAndQuery(page, portalRoute("judge"));
 
   await submitViaApi(user, applicationId);
   await startReview(organizer, applicationId);

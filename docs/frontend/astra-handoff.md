@@ -80,7 +80,7 @@ Accessible names come from `content/copy.ts`, and the tests import them, so rewo
 
 - A field's control is `field-<key>`; its hint, error, and counter are `field-<key>-hint`, `field-<key>-error`, and `field-<key>-counter`.
 - In choice groups, the first radio or checkbox is `field-<key>` and the others are `field-<key>-<value>`.
-- Auth field keys are `email`, `password`, `accountRole`, and `displayName`.
+- Auth field keys are `email`, `password`, `applicationTypes`, and `displayName`.
 - Editor section headings are `h2#section-heading-<step>` with `tabIndex={-1}`.
 - The submit note is `#review-irreversible`.
 

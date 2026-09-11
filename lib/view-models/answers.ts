@@ -121,7 +121,7 @@ export function toAnswerSections(
       id: section.id,
       label,
       editLabel: options.editable ? COPY.review.editSection(label) : null,
-      editHref: options.editable ? applicationStepHref(section.id) : null,
+      editHref: options.editable ? applicationStepHref(type, section.id) : null,
       answers: section.fields.map((field) => toAnswer(type, field, answers[field.key], options.fieldErrors)),
     };
   });

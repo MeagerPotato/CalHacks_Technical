@@ -91,19 +91,36 @@ const submittedApplications = [
 
 export const sampleTimestamp = toTimestampView(UPDATED_AT);
 
+/** A dashboard for one application. `applicationTypes` lists every application the applicant holds. */
+function portalView(
+  application: ApplicantApplication,
+  deadline: string | null = null,
+  applicationTypes: readonly ApplicationType[] = [application.type],
+): PortalView {
+  return toPortalView({ viewer, application, applicationTypes, deadline });
+}
+
+const BOTH_TYPES = ["hacker", "judge"] as const satisfies readonly ApplicationType[];
+
 /** Every portal dashboard state. The gallery renders one at a time so the dashboard's fixed ids stay unique. */
 export const portalViews: GalleryVariant<PortalView>[] = [
-  { id: "not-started", label: "Draft, not started", view: toPortalView({ viewer, application: emptyDraft, deadline: null }) },
-  { id: "in-progress", label: "Draft, in progress", view: toPortalView({ viewer, application: partialDraft, deadline: null }) },
+  { id: "not-started", label: "Draft, not started", view: portalView(emptyDraft) },
+  { id: "in-progress", label: "Draft, in progress", view: portalView(partialDraft) },
+  { id: "ready", label: "Draft, ready to submit, with a deadline", view: portalView(readyDraft, SAMPLE_DEADLINE) },
   {
-    id: "ready",
-    label: "Draft, ready to submit, with a deadline",
-    view: toPortalView({ viewer, application: readyDraft, deadline: SAMPLE_DEADLINE }),
+    id: "both-hacker",
+    label: "Hacker and Judge applications, Hacker selected",
+    view: portalView(partialDraft, null, BOTH_TYPES),
+  },
+  {
+    id: "both-judge",
+    label: "Hacker and Judge applications, Judge selected",
+    view: portalView(readyDraft, null, BOTH_TYPES),
   },
   ...submittedApplications.map((application) => ({
     id: application.status,
     label: APPLICATION_STATUS_LABELS[application.status],
-    view: toPortalView({ viewer, application, deadline: null }),
+    view: portalView(application),
   })),
 ];
 
@@ -132,7 +149,7 @@ export const reviewAnswerSections = toAnswerSections("hacker", invalidDraft.resp
 export const submittedAnswerSections = toAnswerSections("hacker", validHackerResponses, { editable: false });
 
 export const summaryItems = toSummaryItems("hacker", invalidDraft.completion.fieldErrors, (key) =>
-  applicationStepHref(sectionForField("hacker", key) ?? "review", key),
+  applicationStepHref("hacker", sectionForField("hacker", key) ?? "review", key),
 );
 
 const FEEDBACK_CODES = [

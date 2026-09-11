@@ -85,10 +85,12 @@ describe("getNextStep", () => {
 });
 
 describe("step hrefs and ids", () => {
-  it("builds step hrefs with an optional field fragment", () => {
-    expect(applicationStepHref("education")).toBe("/portal/application?section=education");
-    expect(applicationStepHref("review")).toBe("/portal/application?section=review");
-    expect(applicationStepHref("about", "preferredName")).toBe("/portal/application?section=about#field-preferredName");
+  it("builds step hrefs that name the application, with an optional field fragment", () => {
+    expect(applicationStepHref("hacker", "education")).toBe("/portal/application?type=hacker&section=education");
+    expect(applicationStepHref("judge", "review")).toBe("/portal/application?type=judge&section=review");
+    expect(applicationStepHref("hacker", "about", "fullName")).toBe(
+      "/portal/application?type=hacker&section=about#field-fullName",
+    );
   });
 
   it("builds the frozen DOM ids", () => {

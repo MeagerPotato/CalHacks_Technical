@@ -107,8 +107,8 @@ export const COPY = {
     signup: {
       title: "Create your account",
       description: "Choose how you want to take part in Cal Hacks.",
-      roleLegend: "I'm applying as a",
-      roleHint: "You can't change this later.",
+      roleLegend: "I'm applying as",
+      roleHint: "Choose one or both.",
       roleDescriptions: {
         hacker: "Build a project with a team during the event.",
         judge: "Evaluate projects and give teams feedback.",
@@ -160,16 +160,17 @@ export const COPY = {
   onboarding: {
     title: "Confirm your account",
     description: "Check your details, then start your application.",
-    accountType: "Account type",
+    accountType: "Applying as",
     displayName: "Display name",
     displayNameHint: "Shown on your dashboard.",
     submit: "Start application",
     pending: "Setting up your application…",
-    wrongRole: "Chose the wrong account type? Sign out and create a new account with a different email.",
+    wrongRole: "Chose the wrong applications? Sign out and create a new account with a different email.",
   },
   portal: {
     greeting: (name: string | null) => (name ? `Welcome, ${name}` : "Welcome"),
     reference: (reference: string) => `Application ${reference}`,
+    switcherLabel: "Your applications",
     progressTitle: "Your application",
     progressLabel: "Application progress",
     progressValue: (percent: number) => `${percent}% complete`,

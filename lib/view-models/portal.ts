@@ -1,12 +1,14 @@
 import { COPY } from "@/content/copy";
 import { APPLICATION_STATUS_LABELS, APPLICATION_TYPE_LABELS } from "@/lib/application-config";
 import type { ApplicantApplication } from "@/lib/data/types";
+import { APPLICATION_TYPES, type ApplicationType } from "@/lib/domain/enums";
 import { REVIEW_STEP, applicationStepHref } from "@/lib/editor/steps";
 import { toTimestampView } from "@/lib/format/datetime";
-import { ROUTES } from "@/lib/routes";
+import { portalApplicationRoute, portalMissionRoute, portalRoute } from "@/lib/routes";
 import { getSectionLabel } from "@/lib/view-models/fields";
 import { toReadinessItems } from "@/lib/view-models/readiness";
 import type {
+  ApplicationSwitcherView,
   LinkView,
   PortalDraftView,
   PortalSubmittedView,
@@ -20,13 +22,17 @@ import type {
 // Only server code may call this (the portal page): it formats timestamps in the event time zone, and formatting in
 // the browser could produce a different label and a hydration mismatch. A draft gets its progress, next step, and
 // Launch Readiness; a launched application gets its status and links to the mission tracker and the read-only
-// application.
+// application. An applicant who holds both a Hacker and a Judge application also gets a switcher between the two
+// dashboards. Every link names the application it belongs to.
 // =============================================================================
 
 /** Input for the portal dashboard. */
 export interface PortalViewInput {
   viewer: { displayName: string | null };
+  /** The application this dashboard shows. */
   application: ApplicantApplication;
+  /** Types of every application the applicant holds. With more than one, the welcome includes the switcher. */
+  applicationTypes: readonly ApplicationType[];
   /** ISO 8601 instant, or null while the deadline is to be announced. */
   deadline: string | null;
 }
@@ -39,13 +45,31 @@ function presentText(value: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-function toWelcome(viewer: PortalViewInput["viewer"], application: ApplicantApplication): PortalWelcomeView {
+function toSwitcher(current: ApplicationType, held: readonly ApplicationType[]): ApplicationSwitcherView | null {
+  // One entry per type, in form order, whatever order or repeats the caller passed.
+  const types = APPLICATION_TYPES.filter((type) => type === current || held.includes(type));
+  if (types.length < 2) {
+    return null;
+  }
+  return {
+    label: COPY.portal.switcherLabel,
+    items: types.map((type) => ({
+      type,
+      label: APPLICATION_TYPE_LABELS[type],
+      href: portalRoute(type),
+      isCurrent: type === current,
+    })),
+  };
+}
+
+function toWelcome({ viewer, application, applicationTypes }: PortalViewInput): PortalWelcomeView {
   // The profile display name wins; the full-name answer covers accounts without one. A blank name is no name.
   const name = presentText(viewer.displayName) ?? presentText(application.responses.fullName);
   return {
     greeting: COPY.portal.greeting(name),
     typeLabel: APPLICATION_TYPE_LABELS[application.type],
     reference: COPY.portal.reference(application.applicantReference),
+    switcher: toSwitcher(application.type, applicationTypes),
   };
 }
 
@@ -55,7 +79,7 @@ function toNextStep(application: ApplicantApplication): LinkView {
   const { completion } = application;
   const sectionId = completion.nextIncompleteSectionId;
   const step = completion.isSubmittable || sectionId === null ? REVIEW_STEP : sectionId;
-  return { label: getSectionLabel(application.type, step), href: applicationStepHref(step) };
+  return { label: getSectionLabel(application.type, step), href: applicationStepHref(application.type, step) };
 }
 
 // Creating an application sets created_at and updated_at to the same instant, and every update moves updated_at, so
@@ -98,25 +122,27 @@ function toSubmittedView(application: ApplicantApplication, welcome: PortalWelco
     statusLabel: APPLICATION_STATUS_LABELS[application.status],
     launched: toTimestampView(application.launchedAt),
     deadline: toTimestampView(deadline),
-    trackHref: ROUTES.portalMission,
-    viewHref: ROUTES.portalApplication,
+    trackHref: portalMissionRoute(application.type),
+    viewHref: portalApplicationRoute(application.type),
   } satisfies PortalSubmittedView;
 }
 
 /**
- * The portal dashboard for the signed-in applicant's application.
+ * The portal dashboard for one of the signed-in applicant's applications.
  *
- * - Draft: a greeting using the display name, else a non-blank full-name answer; progress with the next step
- *   (the next incomplete section, or review); a start, continue, or review call to action that links to that step;
- *   the last-saved time (null until the first save); the deadline; and Launch Readiness items.
+ * - Both variants: a greeting using the display name, else a non-blank full-name answer; the type label and
+ *   reference; and a switcher between the applicant's applications when they hold more than one.
+ * - Draft: progress with the next step (the next incomplete section, or review); a start, continue, or review call to
+ *   action that links to that step; the last-saved time (null until the first save); the deadline; and Launch
+ *   Readiness items.
  * - Any other status: the status label, launch time, deadline, and links to the mission tracker and the submitted
  *   application.
  *
  * `deadline` is null in both variants while it is to be announced.
  */
 export function toPortalView(input: PortalViewInput): PortalView {
-  const { viewer, application, deadline } = input;
-  const welcome = toWelcome(viewer, application);
+  const { application, deadline } = input;
+  const welcome = toWelcome(input);
   return application.status === "draft"
     ? toDraftView(application, welcome, deadline)
     : toSubmittedView(application, welcome, deadline);

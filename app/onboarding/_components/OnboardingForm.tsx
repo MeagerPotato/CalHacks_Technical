@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition, type FormEvent } from "react";
+import { Fragment, useTransition, type FormEvent } from "react";
 
 import { thrownActionNotice } from "@/app/_components/thrown-notice";
 import { EMPTY_FEEDBACK, readFormString, useFormFeedback } from "@/app/_components/use-form-feedback";
-import { createApplication } from "@/app/actions/applications";
+import { createApplications } from "@/app/actions/applications";
 import { updateProfile } from "@/app/actions/auth";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -27,16 +27,19 @@ const DISPLAY_NAME_FIELDS = [{ key: "displayName", label: COPY.onboarding.displa
 const SIGN_IN_AGAIN_HREF = `${ROUTES.login}?next=${encodeURIComponent(ROUTES.onboarding)}`;
 
 interface OnboardingFormProps {
-  accountRoleLabel: string;
-  /** The saved display name. When null a display name is required before the application is created. */
+  /** Labels of the applications chosen at signup, in form order. */
+  applicationTypeLabels: readonly string[];
+  /** Where to go once every draft exists: the editor for the first application. */
+  continueHref: string;
+  /** The saved display name. When null a display name is required before the applications are created. */
   defaultDisplayName: string | null;
 }
 
 /**
- * Confirms the account type (fixed at signup), saves the display name when it changed, then creates the draft
- * application (idempotent) and opens the editor.
+ * Confirms the applications chosen at signup, saves the display name when it changed, then creates every draft
+ * application (idempotent) and opens the editor for the first one.
  */
-export function OnboardingForm({ accountRoleLabel, defaultDisplayName }: OnboardingFormProps) {
+export function OnboardingForm({ applicationTypeLabels, continueHref, defaultDisplayName }: OnboardingFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { feedback, showFeedback, clearNotice, summaryRef, focusSummaryItem } = useFormFeedback();
@@ -81,12 +84,12 @@ export function OnboardingForm({ accountRoleLabel, defaultDisplayName }: Onboard
           }
         }
 
-        const created = await createApplication();
+        const created = await createApplications();
         if (!created.ok) {
           handleFailure(created.error);
           return;
         }
-        router.replace(ROUTES.portalApplication);
+        router.replace(continueHref);
       } catch (error) {
         startTransition(() => showFeedback({ ...EMPTY_FEEDBACK, notice: thrownActionNotice(error) }));
       }
@@ -103,7 +106,13 @@ export function OnboardingForm({ accountRoleLabel, defaultDisplayName }: Onboard
       />
       {feedback.notice ? <NoticeFromView view={feedback.notice} live="assertive" /> : null}
       <p>
-        {COPY.onboarding.accountType} <Badge tone="info">{accountRoleLabel}</Badge>
+        {COPY.onboarding.accountType}
+        {applicationTypeLabels.map((label) => (
+          <Fragment key={label}>
+            {" "}
+            <Badge tone="info">{label}</Badge>
+          </Fragment>
+        ))}
       </p>
       <Field
         id={fieldControlId("displayName")}

@@ -44,7 +44,7 @@ import {
   type EditorStep,
 } from "@/lib/editor/steps";
 import { buildDraftPatch, isNewerApplication, toUiValues, type UiValue, type UiValues } from "@/lib/editor/values";
-import { ROUTES } from "@/lib/routes";
+import { ROUTES, portalMissionRoute } from "@/lib/routes";
 import type { NoticeActionKind, SummaryItemView } from "@/lib/view-models/types";
 
 /** Result of saving pending edits. Matches the navigation guard's flush contract. */
@@ -276,7 +276,7 @@ export function useApplicationEditor({ application, initialStep }: UseApplicatio
     (next: EditorStep, target?: FocusTarget) => {
       navSeqRef.current += 1;
       if (next !== latestRef.current.step) {
-        window.history.pushState(null, "", applicationStepHref(next));
+        window.history.pushState(null, "", applicationStepHref(latestRef.current.saved.type, next));
       }
       requestFocus(target ?? { kind: "step", step: next });
     },
@@ -481,7 +481,7 @@ export function useApplicationEditor({ application, initialStep }: UseApplicatio
   useEffect(() => {
     const url = new URL(window.location.href);
     if (parseEditorStep(type, url.searchParams.get("section")) === null) {
-      window.history.replaceState(null, "", `${applicationStepHref(initialStep)}${url.hash}`);
+      window.history.replaceState(null, "", `${applicationStepHref(type, initialStep)}${url.hash}`);
     }
     const hashKey = /^#field-([A-Za-z0-9_]+)$/.exec(url.hash)?.[1];
     if (hashKey) {
@@ -572,11 +572,11 @@ export function useApplicationEditor({ application, initialStep }: UseApplicatio
       return;
     }
     const timer = window.setTimeout(
-      () => router.push(ROUTES.portalMission),
+      () => router.push(portalMissionRoute(type)),
       prefersReducedMotion() ? 0 : LIFTOFF_DURATION_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [router, state.phase]);
+  }, [router, state.phase, type]);
 
   // Warn before closing or reloading the tab while answers are unsaved or a save is in flight.
   const hasUnsavedWork = phase === "editing" && (draft.dirtyKeys.length > 0 || state.saveStatus === "saving");

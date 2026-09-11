@@ -107,8 +107,8 @@ function buildApplication(overrides: ApplicationOverrides = {}): ApplicantApplic
   } as ApplicantApplication;
 }
 
-function stepHref(step: string): string {
-  return `/portal/application?section=${step}`;
+function stepHref(step: string, type = "hacker"): string {
+  return `/portal/application?type=${type}&section=${step}`;
 }
 
 function readinessIds(
@@ -157,7 +157,7 @@ describe("toReadinessItems", () => {
         isCurrent: false,
         ...unflagged,
         progressText: COPY.readiness.progress(4, 4),
-        href: "/portal/application?section=about",
+        href: "/portal/application?type=hacker&section=about",
       },
       {
         id: "education",
@@ -292,7 +292,7 @@ describe("toSectionNavItems", () => {
       isActive: false,
       needsAttention: false,
       justCompleted: false,
-      href: "/portal/application?section=review",
+      href: "/portal/application?type=hacker&section=review",
     });
   });
 
@@ -519,7 +519,7 @@ describe("toAnswerSections", () => {
         stepHref(section.id),
       ]),
     );
-    expect(editable[0]).toMatchObject({ id: "about", editHref: "/portal/application?section=about" });
+    expect(editable[0]).toMatchObject({ id: "about", editHref: "/portal/application?type=hacker&section=about" });
 
     const readOnly = toAnswerSections("hacker", validHackerResponses, { editable: false });
     expect(readOnly.map((section) => [section.editLabel, section.editHref])).toEqual(
@@ -688,21 +688,27 @@ describe("toMissionView", () => {
 describe("toPortalView", () => {
   const viewer = { displayName: "Ada Builder" };
 
+  /** Input for an applicant who holds only this application. */
+  function single(application: ApplicantApplication, deadline: string | null = null): PortalViewInput {
+    return { viewer, application, applicationTypes: [application.type], deadline };
+  }
+
   it("invites an unsaved, empty draft to start at the first section", () => {
     const application = buildApplication({ updatedAt: CREATED_AT });
-    expect(toPortalView({ viewer, application, deadline: null })).toEqual({
+    expect(toPortalView(single(application))).toEqual({
       kind: "draft",
       welcome: {
         greeting: COPY.portal.greeting("Ada Builder"),
         typeLabel: APPLICATION_TYPE_LABELS.hacker,
         reference: COPY.portal.reference("H-1042"),
+        switcher: null,
       },
       progress: {
         percent: 0,
         valueText: COPY.portal.progressValue(0),
-        nextStep: { label: "About you", href: "/portal/application?section=about" },
+        nextStep: { label: "About you", href: "/portal/application?type=hacker&section=about" },
         lastSaved: null,
-        cta: { label: COPY.portal.startCta, href: "/portal/application?section=about" },
+        cta: { label: COPY.portal.startCta, href: "/portal/application?type=hacker&section=about" },
       },
       deadline: null,
       readiness: toReadinessItems("hacker", application.completion, {}),
@@ -710,7 +716,7 @@ describe("toPortalView", () => {
   });
 
   it("continues a partial draft at the next incomplete section, with the last saved time", () => {
-    const view = draftView({ viewer, application: buildApplication({ responses: PARTIAL_HACKER }), deadline: null });
+    const view = draftView(single(buildApplication({ responses: PARTIAL_HACKER })));
     expect(view.progress).toEqual({
       percent: 38,
       valueText: COPY.portal.progressValue(38),
@@ -723,11 +729,7 @@ describe("toPortalView", () => {
 
   it("offers the start call to action only when nothing is complete and nothing was saved", () => {
     // Saved with only an optional answer: still 0 percent, but no longer a fresh start.
-    const optionalOnly = draftView({
-      viewer,
-      application: buildApplication({ responses: { githubUrl: "https://github.com/maya" } }),
-      deadline: null,
-    });
+    const optionalOnly = draftView(single(buildApplication({ responses: { githubUrl: "https://github.com/maya" } })));
     expect(optionalOnly.progress).toMatchObject({
       percent: 0,
       lastSaved: UPDATED,
@@ -735,31 +737,24 @@ describe("toPortalView", () => {
     });
 
     // Timestamps still equal: no last saved time, but answered progress is not a fresh start either.
-    const unsaved = draftView({
-      viewer,
-      application: buildApplication({ responses: PARTIAL_HACKER, updatedAt: CREATED_AT }),
-      deadline: null,
-    });
+    const unsaved = draftView(single(buildApplication({ responses: PARTIAL_HACKER, updatedAt: CREATED_AT })));
     expect(unsaved.progress).toMatchObject({ percent: 38, lastSaved: null, cta: { label: COPY.portal.continueCta } });
   });
 
   it("sends a submittable draft to review", () => {
-    const view = draftView({
-      viewer,
-      application: buildApplication({ type: "judge", responses: validJudgeResponses }),
-      deadline: null,
-    });
+    const view = draftView(single(buildApplication({ type: "judge", responses: validJudgeResponses })));
     expect(view.welcome).toEqual({
       greeting: COPY.portal.greeting("Ada Builder"),
       typeLabel: APPLICATION_TYPE_LABELS.judge,
       reference: COPY.portal.reference("J-1042"),
+      switcher: null,
     });
     expect(view.progress).toEqual({
       percent: 100,
       valueText: COPY.portal.progressValue(100),
-      nextStep: { label: COPY.editor.reviewStep, href: "/portal/application?section=review" },
+      nextStep: { label: COPY.editor.reviewStep, href: stepHref("review", "judge") },
       lastSaved: UPDATED,
-      cta: { label: COPY.portal.reviewCta, href: "/portal/application?section=review" },
+      cta: { label: COPY.portal.reviewCta, href: stepHref("review", "judge") },
     });
     expect(readinessIds(view.readiness, "isCurrent")).toEqual([]);
   });
@@ -772,7 +767,7 @@ describe("toPortalView", () => {
     } as ApplicantApplication;
     expect(application.completion.nextIncompleteSectionId).toBeNull();
 
-    expect(draftView({ viewer, application, deadline: null }).progress).toMatchObject({
+    expect(draftView(single(application)).progress).toMatchObject({
       nextStep: { label: COPY.editor.reviewStep, href: stepHref("review") },
       cta: { label: COPY.portal.continueCta, href: stepHref("review") },
     });
@@ -786,35 +781,64 @@ describe("toPortalView", () => {
     ["no name when neither exists", null, {}, null],
   ] as const)("greets with %s", (_case, displayName, responses, name) => {
     const application = buildApplication({ responses });
-    const view = toPortalView({ viewer: { displayName }, application, deadline: null });
+    const view = toPortalView({ ...single(application), viewer: { displayName } });
     expect(view.welcome.greeting).toBe(COPY.portal.greeting(name));
   });
 
   it("formats a set deadline in both variants and keeps it null while to be announced", () => {
     const submitted = buildApplication({ status: "submitted", responses: validHackerResponses });
-    expect(toPortalView({ viewer, application: buildApplication(), deadline: DEADLINE }).deadline).toEqual(
-      DEADLINE_VIEW,
-    );
-    expect(toPortalView({ viewer, application: submitted, deadline: DEADLINE }).deadline).toEqual(DEADLINE_VIEW);
-    expect(toPortalView({ viewer, application: buildApplication(), deadline: null }).deadline).toBeNull();
-    expect(toPortalView({ viewer, application: submitted, deadline: null }).deadline).toBeNull();
+    expect(toPortalView(single(buildApplication(), DEADLINE)).deadline).toEqual(DEADLINE_VIEW);
+    expect(toPortalView(single(submitted, DEADLINE)).deadline).toEqual(DEADLINE_VIEW);
+    expect(toPortalView(single(buildApplication())).deadline).toBeNull();
+    expect(toPortalView(single(submitted)).deadline).toBeNull();
   });
 
   it.each(SUBMITTED_STATUSES)("shows a %s application's status, launch time, and links", (status) => {
     const application = buildApplication({ status, responses: validHackerResponses });
-    expect(toPortalView({ viewer: { displayName: null }, application, deadline: null })).toEqual({
+    expect(toPortalView({ ...single(application), viewer: { displayName: null } })).toEqual({
       kind: "submitted",
       welcome: {
         greeting: COPY.portal.greeting("Test Hacker"),
         typeLabel: APPLICATION_TYPE_LABELS.hacker,
         reference: COPY.portal.reference("H-1042"),
+        switcher: null,
       },
       status,
       statusLabel: APPLICATION_STATUS_LABELS[status],
       launched: LAUNCHED,
       deadline: null,
-      trackHref: "/portal/mission",
-      viewHref: "/portal/application",
+      trackHref: "/portal/mission?type=hacker",
+      viewHref: "/portal/application?type=hacker",
     });
+  });
+
+  it("switches between the Hacker and Judge dashboards when the applicant holds both", () => {
+    const judge = buildApplication({ type: "judge", responses: validJudgeResponses });
+    const switcher = (current: "hacker" | "judge") => ({
+      label: COPY.portal.switcherLabel,
+      items: [
+        {
+          type: "hacker",
+          label: APPLICATION_TYPE_LABELS.hacker,
+          href: "/portal?type=hacker",
+          isCurrent: current === "hacker",
+        },
+        { type: "judge", label: APPLICATION_TYPE_LABELS.judge, href: "/portal?type=judge", isCurrent: current === "judge" },
+      ],
+    });
+    const welcome = (application: ApplicantApplication, applicationTypes: readonly ApplicationType[]) =>
+      toPortalView({ viewer, application, applicationTypes, deadline: null }).welcome;
+
+    expect(welcome(judge, ["hacker", "judge"])).toMatchObject({
+      typeLabel: APPLICATION_TYPE_LABELS.judge,
+      reference: COPY.portal.reference("J-1042"),
+      switcher: switcher("judge"),
+    });
+    // Form order and one entry per type, whatever the input order.
+    expect(welcome(buildApplication(), ["judge", "hacker", "judge"]).switcher).toEqual(switcher("hacker"));
+    // The dashboard's own application always counts.
+    expect(welcome(judge, ["hacker"]).switcher).toEqual(switcher("judge"));
+    expect(welcome(judge, []).switcher).toBeNull();
+    expect(welcome(judge, ["judge"]).switcher).toBeNull();
   });
 });

@@ -7,19 +7,19 @@ Product pages can be built entirely on the typed modules below, with no SQL, dir
 | Import from | Where it can run | What it provides |
 |---|---|---|
 | `@/app/actions/auth` | Server Actions, callable from Client Components | `signUp`, `signIn`, `signOut`, `updateProfile` |
-| `@/app/actions/applications` | Server Actions | `createApplication`, `saveApplication`, `submitApplication`, `updateApplicationStatus` |
+| `@/app/actions/applications` | Server Actions | `createApplication`, `createApplications`, `saveApplication`, `submitApplication`, `updateApplicationStatus` |
 | `@/app/actions/reviews` | Server Actions | `saveReview`, `submitReview`, `revealApplicantIdentity`, `findNextUnreviewedApplication` |
 | `@/lib/auth/dal` | Server only | `getViewer`, `requireViewer`, `requireApplicant`, `requireOrganizer` |
 | `@/lib/auth/callback` | Anywhere | `AUTH_CALLBACK_ERROR_CODES`, `isAuthCallbackErrorCode`, `parseAuthCallbackParams`, `mapAuthCallbackError` for `/auth/callback` and the `/login?error=` notice |
 | `@/lib/env` | Server; `getSupabasePublicEnv` anywhere | `getSupabasePublicEnv`, `hasSupabasePublicEnv`, `getSiteUrl`, `InvalidSiteUrlError` |
-| `@/lib/data/applications` | Server only | `getMyApplication` |
+| `@/lib/data/applications` | Server only | `getMyApplications`, `getMyApplication` |
 | `@/lib/data/organizer` | Server only | `getOrganizerDashboard`, `listApplications`, `getNextUnreviewedApplicationId`, `getReviewWorkspace`, `DataAccessError` |
 | `@/lib/actions/result`, `@/lib/actions/types` | Anywhere | `ActionResult`, `ActionError`, `ActionErrorCode`, `ACTION_ERROR_MESSAGES`, action payload types |
-| `@/lib/data/types`, `@/lib/auth/types` | Anywhere | DTOs such as `ApplicantApplication`, `ReviewWorkspace`, `OrganizerDashboard`, and `Viewer`, plus the `isApplicantViewer` and `isOrganizerViewer` type guards |
+| `@/lib/data/types`, `@/lib/auth/types` | Anywhere | DTOs such as `ApplicantApplication`, `ReviewWorkspace`, `OrganizerDashboard`, and `Viewer`, plus the `isApplicantViewer` and `isOrganizerViewer` type guards and `primaryApplicationType` |
 | `@/lib/validation/*` | Anywhere | Zod schemas, limits, option values, completion calculation, list filters |
 | `@/lib/application-config` | Anywhere | Labels, option lists, application form sections, rubric forms |
 | `@/lib/domain/*` | Anywhere | Enums, mission tracker state, blind-review helpers |
-| `@/lib/routes` | Anywhere | Route paths, role home routes, safe redirect paths |
+| `@/lib/routes` | Anywhere | Route paths, portal routes for one application and the `?type=` resolver, role home routes, safe redirect paths |
 | `@/types/database` | Anywhere | Generated database types and the generated `Constants` enum values |
 
 Server-only modules import `server-only`, so importing one into a Client Component fails the build. Client Components receive DTOs as props and call Server Actions for changes. `@/lib/supabase/client` exists but none of the planned pages need it.
@@ -47,13 +47,13 @@ Error codes:
 | `forbidden` | Signed in with the wrong role, the database refused the operation, or Supabase Auth has signups or the email provider disabled | Role-gated actions, `updateProfile`, `signUp`, `signIn` |
 | `not_found` | The record does not exist or the caller cannot see it. A malformed application id also returns this. | Application, review, and identity actions, and `updateProfile` |
 | `validation_failed` | The input payload failed validation, or the database refused a value (for example a NUL character). See `fieldErrors` and `formErrors` when present. | `signUp`, `signIn`, `updateProfile`, `createApplication`, `saveApplication`, `updateApplicationStatus`, `saveReview`, `submitReview` |
-| `conflict` | Another request created or changed the same record first and retrying did not resolve it; reload and try again | `createApplication`, `saveApplication`, `submitApplication`, `saveReview`, `submitReview` |
+| `conflict` | Another request created or changed the same record first and retrying did not resolve it; reload and try again | `createApplication`, `createApplications`, `saveApplication`, `submitApplication`, `saveReview`, `submitReview` |
 | `rate_limited` | Supabase Auth rate limit | `signUp`, `signIn`, `signOut` |
 | `email_taken` | The account already exists (only reported when email confirmation is off) | `signUp` |
 | `weak_password` | Supabase Auth rejected the password | `signUp` |
 | `invalid_credentials` | Wrong email or password | `signIn` |
 | `email_not_confirmed` | Email confirmation is pending (hosted projects with confirmation on) | `signIn` |
-| `application_type_mismatch` | The requested type differs from the account role | `createApplication` |
+| `application_type_mismatch` | The requested type is not one the account applies for | `createApplication` |
 | `application_locked` | The application is no longer a draft | `saveApplication`, `submitApplication` |
 | `application_incomplete` | Required answers are missing or invalid; see `fieldErrors`. `submitApplication` reports invalid answers with this code, not `validation_failed`. | `submitApplication` |
 | `invalid_status_transition` | A decision on a draft or an already decided application, or a review on a draft | `updateApplicationStatus`, `saveReview`, `submitReview` |
@@ -69,7 +69,7 @@ Error codes:
 |---|---|
 | Applications | Top-level response keys such as `bio` or `skills`. Errors inside a list are reported on the list's key. |
 | Reviews | `scores.<dimension>`, `scores` (for an unknown dimension), `notes`, `recommendation` |
-| Auth | `email`, `password`, `accountRole`, `displayName`, `next` |
+| Auth | `email`, `password`, `applicationTypes`, `displayName`, `next` |
 | Decisions | `status` |
 
 Server Component reads return data, redirect through the guards, or throw `DataAccessError` (with the same `code` values) when the database fails. Let the nearest error boundary handle those.
@@ -88,6 +88,7 @@ interface Viewer {
   email: string;
   displayName: string | null;
   accountRole: "hacker" | "judge" | "organizer"; // always read from public.profiles
+  applicationTypes: readonly ("hacker" | "judge")[]; // Hacker, Judge, or both, in that order; empty for Organizers
   isOrganizer: boolean;
 }
 
@@ -97,13 +98,15 @@ requireApplicant(): Promise<ApplicantViewer>; // Hacker or Judge; Organizers red
 requireOrganizer(): Promise<OrganizerViewer>; // Organizer; applicants redirect to /portal
 ```
 
+For applicants, `accountRole` is always the first of `applicationTypes`, and `primaryApplicationType(viewer)` from `@/lib/auth/types` returns it.
+
 Call a guard at the top of each protected page or layout. `proxy.ts` refreshes the session cookie and optimistically sends signed-out page loads (GET and HEAD) on protected paths to `/login?next=…` with no-store headers. Server Action POSTs are never redirected, so an expired session reaches the action and returns `unauthenticated` instead of the login page HTML. The proxy is a convenience only, not the authorization boundary: it does not check roles.
 
 ## Authentication actions (`@/app/actions/auth`)
 
 | Action | Input | Success data |
 |---|---|---|
-| `signUp(input)` | `{ email, password, accountRole: "hacker" \| "judge", displayName? }` or `FormData` | `{ viewer: Viewer \| null, requiresEmailConfirmation: boolean, redirectTo: "/onboarding" \| "/login" }` |
+| `signUp(input)` | `{ email, password, applicationTypes: ("hacker" \| "judge")[], displayName? }` or `FormData` | `{ viewer: Viewer \| null, requiresEmailConfirmation: boolean, redirectTo: "/onboarding" \| "/login" }` |
 | `signIn(input)` | `{ email, password, next? }` or `FormData` | `{ viewer: Viewer, redirectTo: string }` |
 | `signOut()` | none | `{ redirectTo: "/login" }` |
 | `updateProfile(input)` | `{ displayName }` or `FormData` | `{ viewer: Viewer }` |
@@ -111,7 +114,7 @@ Call a guard at the top of each protected page or layout. `proxy.ts` refreshes t
 - **Email:** trimmed and lowercased.
 - **Password:** 8–72 characters at signup. `signIn` only checks for 1–72 characters and leaves the rest to Supabase Auth.
 - **Display name:** 1–80 characters. It is optional at signup and can be set with `updateProfile`.
-- **Account role:** can only be `hacker` or `judge`. `organizer` fails validation here, and the database signup trigger rejects it for any other client.
+- **Application types:** one or both of `hacker` and `judge`, sent as repeated `applicationTypes` checkbox values. A single string counts as a one-item list, and the result is in form order. `organizer`, unknown values, duplicates, and an empty choice fail validation with `fieldErrors.applicationTypes`, and the database signup trigger rejects them for any other client. The account role becomes the first type, so an account that applies for both is a Hacker account.
 - **Sign-in redirect:** `next` is optional. When present it must be a string of at most 2048 characters (pass `undefined`, not `null`); otherwise `signIn` returns `validation_failed` with `fieldErrors.next` and does not sign in. A valid `next` is used only when it is a same-origin path allowed for the role. Otherwise `redirectTo` is the role home: `/portal` for applicants, `/organizer` for Organizers.
 - **Navigation:** actions do not redirect. Navigate to `redirectTo` in the UI after `ok: true`, for example with `router.push` or `router.refresh`. Auth cookies are set by the action.
 - **Email confirmation:** when it is enabled (the hosted default), `signUp` returns `requiresEmailConfirmation: true` and no session. The email links to `<origin>/auth/callback`, with the origin from `getSiteUrl()`. The callback signs the user in and continues to `/onboarding`. See [environment-and-deployment.md](environment-and-deployment.md).
@@ -120,13 +123,16 @@ Call a guard at the top of each protected page or layout. `proxy.ts` refreshes t
 
 ### Reads (`@/lib/data/applications`)
 
-`getMyApplication(): Promise<ApplicantApplication | null>` returns the signed-in applicant's application, or null before `createApplication`.
+`getMyApplications(): Promise<ApplicantApplication[]>` returns every application the signed-in applicant owns, in form order (Hacker, then Judge). It is empty before onboarding creates them.
+
+`getMyApplication(type?): Promise<ApplicantApplication | null>` returns the applicant's application of that type, or of their first application type when `type` is omitted. It is null before that draft exists.
 
 ### Actions (`@/app/actions/applications`)
 
 | Action | Behavior |
 |---|---|
-| `createApplication(type?)` | Creates the caller's draft. It is idempotent and returns the existing application if there is one. The type always equals the account role; passing a different type returns `application_type_mismatch`. |
+| `createApplication(type?)` | Creates the caller's draft of one type. It is idempotent and returns the existing application if there is one. The type defaults to the account's first application type; a type the account does not apply for returns `application_type_mismatch`. |
+| `createApplications()` | Creates a draft for every type the account applies for, idempotently, and returns them in form order. Onboarding calls it. |
 | `saveApplication(applicationId, payload)` | Saves a partial draft. See the save rules below. Returns the updated `ApplicantApplication`. |
 | `submitApplication(applicationId)` | Validates the saved answers against the full role schema. On failure it returns `application_incomplete` with `fieldErrors`. On success the status becomes `submitted`, the database sets `launched_at`, and the application locks. Submission is irreversible. |
 
@@ -169,7 +175,16 @@ Applicants never receive review scores, notes, recommendations, or reviewer iden
 
 ### Onboarding flow
 
-The role is chosen at signup. `/onboarding` calls `requireApplicant()` and shows `viewer.accountRole`. To confirm the account details and create the draft, it calls `updateProfile({ displayName })` and then `createApplication()`.
+Applicants choose Hacker, Judge, or both at signup. `/onboarding` calls `requireApplicant()` and shows every type in `viewer.applicationTypes`. To confirm the account details and create the drafts, it calls `updateProfile({ displayName })` and then `createApplications()`, and opens the first application's editor. Once every draft exists, the page redirects there immediately.
+
+### Choosing an application (`?type=`)
+
+Portal pages show one application at a time, named by the `type` search parameter. Build links with `portalRoute(type)`, `portalApplicationRoute(type)`, and `portalMissionRoute(type)` from `@/lib/routes`, and `applicationStepHref(type, step, fieldKey?)` from `@/lib/editor/steps` for editor steps; every href the view models build already includes it.
+
+- Pages resolve the parameter with `resolveApplicationType(viewer.applicationTypes, raw)`. A missing parameter shows the first application.
+- A type the account does not hold, an unknown value, or a repeated parameter redirects to the first application's URL.
+- `/portal` redirects to `/onboarding` while any chosen application has no draft.
+- When an applicant holds both applications, `PortalWelcomeView.switcher` links the two dashboards; otherwise it is null.
 
 ### Completion and Launch Readiness (`@/lib/validation/completion`)
 
@@ -349,7 +364,7 @@ Review ownership:
 | `@/lib/validation/errors`, `@/lib/validation/form-data` | `toFieldErrors`, `toFormErrors`, `FieldErrors`, `formDataToObject`, `toPlainInput`. |
 | `@/lib/domain/enums` | `ACCOUNT_ROLES`, `PUBLIC_ACCOUNT_ROLES`, `APPLICATION_TYPES`, `APPLICATION_STATUSES`, `DECISION_STATUSES`, `RECOMMENDATIONS`, their types, `isApplicantRole`, `isDecisionStatus`. |
 | `@/lib/domain/applicant-identity` | `IDENTITY_RESPONSE_KEYS`, `formatApplicantReference`, `isIdentityResponseKey`, `splitIdentityResponses`. |
-| `@/lib/routes` | `ROUTES`, `organizerApplicationRoute(id)`, `getHomeRouteForRole`, `PROTECTED_ROUTE_PREFIXES`, `isProtectedPath`, `getSafeRedirectPath`. |
+| `@/lib/routes` | `ROUTES`, `organizerApplicationRoute(id)`, `APPLICATION_TYPE_PARAM`, `portalRoute(type)`, `portalApplicationRoute(type)`, `portalMissionRoute(type)`, `resolveApplicationType`, `getHomeRouteForRole`, `PROTECTED_ROUTE_PREFIXES`, `isProtectedPath`, `getSafeRedirectPath`. |
 
 The same Zod schemas run on the server. The client may use them for instant feedback, but the server's `fieldErrors` are authoritative.
 
@@ -361,10 +376,10 @@ The same Zod schemas run on the server. The client may use them for instant feed
 | `/signup` | none | `getViewer()` to redirect signed-in users | `signUp` |
 | `/login` | none | `searchParams.next` | `signIn` |
 | `/auth/callback` | none (GET Route Handler) | `code` only; `next` and token parameters are ignored | none. Exchanges the PKCE code for a session and redirects to `/onboarding`, or to `/login?error=<code>` (`link_expired`, `confirm_link_other_browser`, `invalid_link`, `auth_callback_failed`), always with no-store headers |
-| `/onboarding` | `requireApplicant()` | `getMyApplication()` | `updateProfile`, `createApplication` |
-| `/portal` | `requireApplicant()` | `getMyApplication()` | `signOut` |
-| `/portal/application` | `requireApplicant()` | `getMyApplication()`, `APPLICATION_FORMS[application.type]` | `saveApplication`, `submitApplication` |
-| `/portal/mission` | `requireApplicant()` | `getMyApplication()` → `.mission` | none |
+| `/onboarding` | `requireApplicant()` | `getMyApplications()` | `updateProfile`, `createApplications` |
+| `/portal?type=` | `requireApplicant()` | `getMyApplications()` | `signOut` |
+| `/portal/application?type=` | `requireApplicant()` | `getMyApplication(type)`, `APPLICATION_FORMS[application.type]` | `saveApplication`, `submitApplication` |
+| `/portal/mission?type=` | `requireApplicant()` | `getMyApplication(type)` → `.mission` | none |
 | `/organizer` | `requireOrganizer()` | `getOrganizerDashboard()` | `signOut` |
 | `/organizer/applications` | `requireOrganizer()` | `listApplications(await searchParams)` | none |
 | `/organizer/applications/[id]` | `requireOrganizer()` | `getReviewWorkspace(id, { revealIdentity })`, `RUBRIC_FORMS[type]` | `saveReview`, `submitReview`, `revealApplicantIdentity`, `updateApplicationStatus`, `findNextUnreviewedApplication` |

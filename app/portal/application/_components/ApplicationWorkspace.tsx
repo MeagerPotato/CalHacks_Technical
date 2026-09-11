@@ -20,7 +20,7 @@ import { APPLICATION_FORMS, APPLICATION_STATUS_LABELS, APPLICATION_TYPE_LABELS }
 import type { ApplicantApplication } from "@/lib/data/types";
 import { toSummaryItems } from "@/lib/editor/feedback";
 import { REVIEW_STEP, applicationStepHref, sectionForField, sectionHeadingId, type EditorStep } from "@/lib/editor/steps";
-import { ROUTES } from "@/lib/routes";
+import { portalMissionRoute, portalRoute } from "@/lib/routes";
 import type { FieldErrors } from "@/lib/validation/errors";
 import { toAnswerSections } from "@/lib/view-models/answers";
 import { resolveSectionCopy } from "@/lib/view-models/fields";
@@ -97,7 +97,7 @@ export function ApplicationWorkspace({ application, initialStep, lastSaved, laun
         launched={launched}
         launchedPrefix={COPY.portal.launched}
         trackLabel={LOCKED.portal.trackMission}
-        trackHref={ROUTES.portalMission}
+        trackHref={portalMissionRoute(type)}
         sections={toAnswerSections(type, saved.responses, { editable: false })}
         notice={state.notice ? <NoticeFromView view={state.notice} /> : undefined}
       />
@@ -112,7 +112,7 @@ export function ApplicationWorkspace({ application, initialStep, lastSaved, laun
     });
     const summaryErrors = section ? pickErrors(errors, section.fields.map((field) => field.key)) : errors;
     const summaryItems = toSummaryItems(type, summaryErrors, (key) =>
-      applicationStepHref(sectionForField(type, key) ?? step, key),
+      applicationStepHref(type, sectionForField(type, key) ?? step, key),
     );
     const saving = state.saveStatus === "saving";
 
@@ -123,7 +123,7 @@ export function ApplicationWorkspace({ application, initialStep, lastSaved, laun
             title={COPY.editor.title(APPLICATION_TYPE_LABELS[type])}
             status={saved.status}
             statusLabel={APPLICATION_STATUS_LABELS[saved.status]}
-            backHref={ROUTES.portal}
+            backHref={portalRoute(type)}
             backLabel={COPY.editor.backToPortal}
           />
         }

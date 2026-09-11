@@ -1,4 +1,4 @@
-import type { ApplicationStatus, DecisionStatus } from "@/lib/domain/enums";
+import type { ApplicationStatus, ApplicationType, DecisionStatus } from "@/lib/domain/enums";
 import type { MissionLeg, MissionLegState, MissionStage } from "@/lib/domain/mission";
 import type { SectionCompletionStatus } from "@/lib/validation/completion";
 
@@ -138,10 +138,29 @@ export interface MissionView {
   reviewNote: string | null;
 }
 
+/** One application in the portal's application switcher. */
+export interface ApplicationSwitcherItemView {
+  type: ApplicationType;
+  label: string;
+  href: string;
+  /** The application this page shows. */
+  isCurrent: boolean;
+}
+
+/** Links between an applicant's Hacker and Judge dashboards. Present only when they hold both applications. */
+export interface ApplicationSwitcherView {
+  /** Accessible name of the switcher's navigation landmark. */
+  label: string;
+  /** In form order: Hacker, then Judge. */
+  items: ApplicationSwitcherItemView[];
+}
+
 export interface PortalWelcomeView {
   greeting: string;
   typeLabel: string;
   reference: string;
+  /** Null when the applicant holds one application; the type badge shows instead. */
+  switcher: ApplicationSwitcherView | null;
 }
 
 export interface PortalProgressView {

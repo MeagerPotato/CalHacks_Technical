@@ -7,10 +7,12 @@ import { failFromDatabase } from "@/lib/actions/errors";
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
 import type { ApplicationData, DecisionData } from "@/lib/actions/types";
 import { authorizeApplicantAction, authorizeOrganizerAction } from "@/lib/auth/authorize";
+import { primaryApplicationType, type ApplicantViewer } from "@/lib/auth/types";
 import { fetchApplicationRowById, fetchApplicationRowForUser } from "@/lib/data/applications";
 import { APPLICATION_SELECT, toApplicantApplication } from "@/lib/data/mappers";
 import { APPLICATION_TYPES, isDecisionStatus, type ApplicationType, type DecisionStatus } from "@/lib/domain/enums";
 import { ROUTES } from "@/lib/routes";
+import type { TypedSupabaseClient } from "@/lib/supabase/types";
 import {
   getApplicationDraftSchema,
   getApplicationSubmissionSchema,
@@ -35,9 +37,49 @@ function revalidateOrganizerRoutes() {
   revalidatePath(ROUTES.organizer, "layout");
 }
 
+interface EnsuredApplication {
+  application: ApplicationData;
+  /** True when this call inserted the draft. */
+  created: boolean;
+}
+
+/** Returns the viewer's application of one type, creating the draft first when it does not exist. */
+async function ensureApplication(
+  supabase: TypedSupabaseClient,
+  viewer: ApplicantViewer,
+  type: ApplicationType,
+): Promise<ActionResult<EnsuredApplication>> {
+  const existing = await fetchApplicationRowForUser(supabase, viewer.userId, type);
+  if (existing.error) {
+    return failFromDatabase("createApplication:load", existing.error);
+  }
+  if (existing.data) {
+    return ok({ application: toApplicantApplication(existing.data), created: false });
+  }
+
+  const { data, error } = await supabase
+    .from("applications")
+    .insert({ user_id: viewer.userId, application_type: type })
+    .select(APPLICATION_SELECT)
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      // A concurrent request created it first.
+      const retry = await fetchApplicationRowForUser(supabase, viewer.userId, type);
+      if (retry.data) {
+        return ok({ application: toApplicantApplication(retry.data), created: false });
+      }
+    }
+    return failFromDatabase("createApplication:insert", error);
+  }
+
+  return ok({ application: toApplicantApplication(data), created: true });
+}
+
 /**
- * Creates the signed-in applicant's draft application (idempotent: returns the existing one).
- * The type always equals the account role; passing a different type fails.
+ * Creates the signed-in applicant's draft of one type (idempotent: returns the existing one). The type defaults to the
+ * account's first application type; a type the account does not apply for returns `application_type_mismatch`.
  */
 export async function createApplication(type?: ApplicationType): Promise<ActionResult<ApplicationData>> {
   const auth = await authorizeApplicantAction();
@@ -46,42 +88,57 @@ export async function createApplication(type?: ApplicationType): Promise<ActionR
   }
   const { supabase, viewer } = auth;
 
+  let target = primaryApplicationType(viewer);
   if (type !== undefined) {
     const parsedType = applicationTypeSchema.safeParse(type);
     if (!parsedType.success) {
       return fail("validation_failed", { formErrors: toFormErrors(parsedType.error) });
     }
-    if (parsedType.data !== viewer.accountRole) {
+    if (!viewer.applicationTypes.includes(parsedType.data)) {
       return fail("application_type_mismatch");
     }
+    target = parsedType.data;
   }
 
-  const existing = await fetchApplicationRowForUser(supabase, viewer.userId);
-  if (existing.error) {
-    return failFromDatabase("createApplication:load", existing.error);
+  const result = await ensureApplication(supabase, viewer, target);
+  if (!result.ok) {
+    return result;
   }
-  if (existing.data) {
-    return ok(toApplicantApplication(existing.data));
+  if (result.data.created) {
+    revalidateApplicantRoutes();
   }
+  return ok(result.data.application);
+}
 
-  const { data, error } = await supabase
-    .from("applications")
-    .insert({ user_id: viewer.userId, application_type: viewer.accountRole })
-    .select(APPLICATION_SELECT)
-    .single();
+/**
+ * Creates a draft for every application type the signed-in account applies for (idempotent) and returns them in form
+ * order. Onboarding calls it, so an account that applies as a Hacker and a Judge starts with both drafts.
+ */
+export async function createApplications(): Promise<ActionResult<ApplicationData[]>> {
+  const auth = await authorizeApplicantAction();
+  if (!auth.ok) {
+    return auth;
+  }
+  const { supabase, viewer } = auth;
 
-  if (error) {
-    if (error.code === "23505") {
-      const retry = await fetchApplicationRowForUser(supabase, viewer.userId);
-      if (retry.data) {
-        return ok(toApplicantApplication(retry.data));
+  const applications: ApplicationData[] = [];
+  let created = false;
+  for (const type of viewer.applicationTypes) {
+    const result = await ensureApplication(supabase, viewer, type);
+    if (!result.ok) {
+      if (created) {
+        revalidateApplicantRoutes();
       }
+      return result;
     }
-    return failFromDatabase("createApplication:insert", error);
+    applications.push(result.data.application);
+    created ||= result.data.created;
   }
 
-  revalidateApplicantRoutes();
-  return ok(toApplicantApplication(data));
+  if (created) {
+    revalidateApplicantRoutes();
+  }
+  return ok(applications);
 }
 
 /**

@@ -23,7 +23,7 @@ test("a new Judge signs up, onboards, saves a partial draft, sees Launch Readine
   const password = newPassword();
 
   await page.goto(ROUTES.signup);
-  await page.getByRole("radio", { name: ACCOUNT_ROLE_LABELS.judge }).check();
+  await page.getByRole("checkbox", { name: ACCOUNT_ROLE_LABELS.judge }).check();
   await page.getByLabel(COPY.auth.signup.email).fill(email);
   await page.getByLabel(COPY.auth.signup.password).fill(password);
   await page.getByRole("button", { name: LOCKED.auth.createAccount }).click();
@@ -33,7 +33,7 @@ test("a new Judge signs up, onboards, saves a partial draft, sees Launch Readine
   await page.getByLabel(COPY.onboarding.displayName).fill("Signup Judge");
   await page.getByRole("button", { name: COPY.onboarding.submit }).click();
 
-  await expect(page).toHaveURL(/\/portal\/application\?section=about$/);
+  await expect(page).toHaveURL(/\/portal\/application\?type=judge&section=about$/);
   await expect(
     page.getByRole("heading", { level: 1, name: COPY.editor.title(APPLICATION_TYPE_LABELS.judge) }),
   ).toBeVisible();
@@ -59,7 +59,7 @@ test("a new Judge signs up, onboards, saves a partial draft, sees Launch Readine
   await page.goto("/portal/application?section=review");
   await page.getByRole("button", { name: LOCKED.review.submit }).click();
 
-  await expect(page).toHaveURL(/\/portal\/mission$/);
+  await expect(page).toHaveURL(/\/portal\/mission\?type=judge$/);
   await expect(page.getByTestId("mission-tracker")).toHaveAttribute("data-stage", "cruise");
 });
 
@@ -95,6 +95,6 @@ test("a complete Judge application submits and reaches the mission tracker", asy
   await signInViaUi(page, user, "/portal/application?section=review");
 
   await page.getByRole("button", { name: LOCKED.review.submit }).click();
-  await expect(page).toHaveURL(/\/portal\/mission$/);
+  await expect(page).toHaveURL(/\/portal\/mission\?type=judge$/);
   await expect(page.getByTestId("mission-tracker")).toHaveAttribute("data-stage", "cruise");
 });

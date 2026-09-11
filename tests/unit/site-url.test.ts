@@ -145,7 +145,7 @@ describe("getSiteUrl", () => {
 });
 
 describe("signUp confirmation redirect", () => {
-  const input = { email: "maya@example.com", password: "correct-horse-battery", accountRole: "hacker" } as const;
+  const input = { email: "maya@example.com", password: "correct-horse-battery", applicationTypes: ["hacker"] };
 
   beforeEach(() => {
     authSignUp.mockResolvedValue({ data: { user: null, session: null }, error: null });
@@ -177,7 +177,7 @@ describe("signUp confirmation redirect", () => {
     expect(authSignUp).toHaveBeenCalledExactlyOnceWith({
       email: "maya@example.com",
       password: "correct-horse-battery",
-      options: { data: { account_role: "hacker" }, emailRedirectTo: expected },
+      options: { data: { application_types: ["hacker"] }, emailRedirectTo: expected },
     });
   });
 
@@ -189,7 +189,7 @@ describe("signUp confirmation redirect", () => {
     expect(authSignUp).toHaveBeenCalledExactlyOnceWith({
       email: "maya@example.com",
       password: "correct-horse-battery",
-      options: { data: { account_role: "hacker" } },
+      options: { data: { application_types: ["hacker"] } },
     });
   });
 
@@ -215,11 +215,11 @@ describe("signUp confirmation redirect", () => {
     const formData = new FormData();
     formData.append("email", "maya@example.com");
     formData.append("password", "correct-horse-battery");
-    formData.append("accountRole", "organizer");
+    formData.append("applicationTypes", "organizer");
 
     expect(await signUp(formData)).toMatchObject({
       ok: false,
-      error: { code: "validation_failed", fieldErrors: { accountRole: expect.any(Array) } },
+      error: { code: "validation_failed", fieldErrors: { applicationTypes: expect.any(Array) } },
     });
     expect(consoleError).not.toHaveBeenCalled();
     expect(createClient).not.toHaveBeenCalled();

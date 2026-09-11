@@ -29,7 +29,7 @@ function isPathAllowedForRole(path: string, viewer: Viewer): boolean {
 }
 
 /**
- * Creates a Hacker or Judge account with email and password.
+ * Creates an account with email and password that applies as a Hacker, a Judge, or both.
  * Organizer can never be requested: Zod rejects it here and the database signup trigger
  * rejects it for any client that bypasses this action.
  */
@@ -42,7 +42,7 @@ export async function signUp(input: SignUpInput | FormData): Promise<ActionResul
     });
   }
 
-  const { email, password, accountRole, displayName } = parsed.data;
+  const { email, password, applicationTypes, displayName } = parsed.data;
 
   // Resolved before calling Supabase so a misconfigured origin never sends a broken confirmation link.
   let siteUrl: string | null;
@@ -60,7 +60,7 @@ export async function signUp(input: SignUpInput | FormData): Promise<ActionResul
     password,
     options: {
       data: {
-        account_role: accountRole,
+        application_types: applicationTypes,
         ...(displayName ? { display_name: displayName } : {}),
       },
       // Confirmation links return to /auth/callback on a configured origin, never a request Host header.

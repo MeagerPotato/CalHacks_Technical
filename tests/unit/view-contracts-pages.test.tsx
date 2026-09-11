@@ -328,6 +328,20 @@ const WELCOME: PortalWelcomeView = {
   greeting: COPY.portal.greeting("Ada"),
   typeLabel: APPLICATION_TYPE_LABELS.hacker,
   reference: COPY.portal.reference("H-1042"),
+  switcher: null,
+};
+
+const DUAL_WELCOME: PortalWelcomeView = {
+  ...WELCOME,
+  typeLabel: APPLICATION_TYPE_LABELS.judge,
+  reference: COPY.portal.reference("J-1043"),
+  switcher: {
+    label: COPY.portal.switcherLabel,
+    items: [
+      { type: "hacker", label: APPLICATION_TYPE_LABELS.hacker, href: "/portal?type=hacker", isCurrent: false },
+      { type: "judge", label: APPLICATION_TYPE_LABELS.judge, href: "/portal?type=judge", isCurrent: true },
+    ],
+  },
 };
 
 const DRAFT_VIEW: PortalDraftView = {
@@ -690,6 +704,33 @@ describe("PortalWelcome", () => {
     expect(textsOf(html, "h1")).toEqual([WELCOME.greeting]);
     expect(textOf(html)).toContain(WELCOME.typeLabel);
     expect(textOf(html)).toContain(WELCOME.reference);
+    expect(testIdsIn(html)).not.toContain("application-switcher");
+    expectNoMain(html);
+  });
+
+  it("replaces the badge with a labelled switcher that marks the application on screen", () => {
+    const html = renderToStaticMarkup(<PortalWelcome view={DUAL_WELCOME} />);
+    const switcher = byTestId(html, "application-switcher");
+
+    expect(rootOf(switcher)).toMatchObject({ name: "nav", attrs: { "aria-label": COPY.portal.switcherLabel } });
+    expect(tagsNamed(switcher, "li")).toHaveLength(2);
+    expect(
+      linksIn(switcher).map((link) => [
+        link.href,
+        link.text,
+        link.attrs["aria-current"],
+        link.attrs["data-type"],
+        link.attrs["data-state"],
+        link.attrs["data-guarded"],
+      ]),
+    ).toEqual([
+      ["/portal?type=hacker", APPLICATION_TYPE_LABELS.hacker, undefined, "hacker", "other", "true"],
+      ["/portal?type=judge", APPLICATION_TYPE_LABELS.judge, "page", "judge", "current", "true"],
+    ]);
+    expect(textsOf(html, "h1")).toEqual([DUAL_WELCOME.greeting]);
+    expect(textOf(html)).toContain(DUAL_WELCOME.reference);
+    // Each type label appears once, inside the switcher, so no badge repeats it.
+    expect(textOf(html).split(APPLICATION_TYPE_LABELS.judge)).toHaveLength(2);
     expectNoMain(html);
   });
 });

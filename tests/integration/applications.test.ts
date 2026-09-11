@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { createApplication, saveApplication, submitApplication } from "@/app/actions/applications";
-import { getMyApplication } from "@/lib/data/applications";
+import { createApplication, createApplications, saveApplication, submitApplication } from "@/app/actions/applications";
+import { getMyApplication, getMyApplications } from "@/lib/data/applications";
+import type { ApplicationType } from "@/lib/domain/enums";
 
 import { validHackerResponses, validJudgeResponses } from "../fixtures/applications";
 import {
@@ -78,6 +79,72 @@ describe("createApplication action", () => {
     expectFailure(await saveApplication(randomUUID(), {}), "forbidden");
     expectFailure(await submitApplication(randomUUID()), "forbidden");
     await expect(getMyApplication()).rejects.toMatchObject(redirectError());
+  });
+});
+
+describe("createApplications action", () => {
+  it("creates a draft for each application type the account applies for, and each one saves and submits alone", async () => {
+    const applicant = await signUpTestUser({ label: "both", types: ["judge", "hacker"] });
+    actAs(applicant);
+
+    const created = expectOk(await createApplications());
+    const ids = created.map((application) => application.id);
+
+    expect(created.map((application) => [application.type, application.status])).toEqual([
+      ["hacker", "draft"],
+      ["judge", "draft"],
+    ]);
+    expect(created[0].applicantReference).toMatch(/^H-\d+$/);
+    expect(created[1].applicantReference).toMatch(/^J-\d+$/);
+
+    // Idempotent, and the single-type action returns the same drafts.
+    expect(expectOk(await createApplications()).map((application) => application.id)).toEqual(ids);
+    expect(expectOk(await createApplication("judge")).id).toBe(ids[1]);
+    expect(expectOk(await createApplication()).id).toBe(ids[0]);
+
+    expect((await getMyApplications()).map((application) => application.id)).toEqual(ids);
+    expect((await getMyApplication("judge"))?.id).toBe(ids[1]);
+    expect((await getMyApplication())?.id).toBe(ids[0]);
+
+    expectOk(await saveApplication(ids[1], validJudgeResponses));
+    expect(expectOk(await submitApplication(ids[1]))).toMatchObject({ type: "judge", status: "submitted" });
+    expect(await getMyApplication("hacker")).toMatchObject({ status: "draft", responses: {} });
+
+    const rows = await queryRows<{ type: string }>(
+      "select application_type::text as type from public.applications where user_id = $1 order by application_type",
+      [applicant.userId],
+    );
+    expect(rows).toEqual([{ type: "hacker" }, { type: "judge" }]);
+  });
+
+  it("creates only the one application of a single-type account", async () => {
+    const judge = await signUpTestUser({ label: "one-type", types: ["judge"] });
+    actAs(judge);
+
+    expect(expectOk(await createApplications()).map((application) => application.type)).toEqual(["judge"]);
+    expectFailure(await createApplication("hacker"), "application_type_mismatch");
+    expect(await getMyApplication("hacker")).toBeNull();
+  });
+
+  it("allows one application of each type through the Data API", async () => {
+    const applicant = await signUpTestUser({ label: "one-per-type", types: ["hacker", "judge"] });
+    const insert = (type: ApplicationType) =>
+      applicant.client.from("applications").insert({ user_id: applicant.userId, application_type: type }).select("id");
+
+    expect((await insert("hacker")).error).toBeNull();
+    expect((await insert("judge")).error).toBeNull();
+    expect((await insert("hacker")).error?.code).toBe("23505");
+    expect((await insert("judge")).error?.code).toBe("23505");
+  });
+
+  it("requires a signed-in Hacker or Judge", async () => {
+    actAs(createTestClient());
+    expectFailure(await createApplications(), "unauthenticated");
+    await expect(getMyApplications()).rejects.toMatchObject(redirectError());
+
+    actAs(await createOrganizer("create-many-organizer"));
+    expectFailure(await createApplications(), "forbidden");
+    await expect(getMyApplications()).rejects.toMatchObject(redirectError());
   });
 });
 

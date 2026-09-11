@@ -114,7 +114,7 @@ test.describe("Hacker application journey", () => {
     await expect(readiness.getByTestId("readiness-item-about")).toHaveAttribute("data-state", /complete|in_progress/);
     await readiness.getByTestId("readiness-item-education").getByRole("link").click();
 
-    await expect(page).toHaveURL(/\/portal\/application\?section=education$/);
+    await expect(page).toHaveURL(/\/portal\/application\?type=hacker&section=education$/);
     await expect(page.locator("#section-heading-education")).toBeVisible();
   });
 
@@ -138,7 +138,7 @@ test.describe("Hacker application journey", () => {
     await page.goto("/portal/application?section=review");
     await page.getByRole("button", { name: LOCKED.review.submit }).click();
 
-    await expect(page).toHaveURL(/\/portal\/mission$/);
+    await expect(page).toHaveURL(/\/portal\/mission\?type=hacker$/);
     await expect(page.getByRole("heading", { level: 1, name: LOCKED.mission.cruising })).toBeVisible();
     await expect(page.getByTestId("mission-leg-launch")).toHaveAttribute("data-state", "complete");
     await expect(page.getByTestId("mission-leg-launch").locator("time[datetime]")).toHaveCount(1);

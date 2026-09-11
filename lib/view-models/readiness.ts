@@ -65,7 +65,7 @@ function summarizeSection(
     // A saved answer that fails the submission schema needs attention even when no error is on screen.
     needsAttention: section.invalidFields.length > 0 || attention.has(section.id),
     justCompleted: justCompleted?.includes(section.id) ?? false,
-    href: applicationStepHref(section.id),
+    href: applicationStepHref(type, section.id),
   };
 }
 
@@ -133,7 +133,7 @@ export function toSectionNavItems(
     isActive: activeStep === REVIEW_STEP,
     needsAttention: false,
     justCompleted: false,
-    href: applicationStepHref(REVIEW_STEP),
+    href: applicationStepHref(type, REVIEW_STEP),
   };
 
   return [...sectionItems, reviewItem];
