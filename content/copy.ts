@@ -191,7 +191,7 @@ export const COPY = {
       passwordLabel: "Password",
       accounts: [
         { label: "Organizer", email: "organizer@calhacks.com", password: "ILoveHacking" },
-        { label: "Applicant", email: "applicant@gmail.com", password: "ILoveRockets" },
+        { label: "Applicant (Hacker + Judge application)", email: "applicant@gmail.com", password: "ILoveRockets" },
       ],
     },
     callbackErrors: {
