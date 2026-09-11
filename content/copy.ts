@@ -338,3 +338,294 @@ export const SECTION_COPY: Readonly<Partial<Record<ApplicationSectionId, { reado
   short_answers: { intro: "A few questions, answered in your own words. We want to hear how you think." },
   agreements: { intro: "Great things get built when people look out for each other. Review the agreement before you continue." },
 };
+
+// =============================================================================
+// Organizer product copy (Phase 3).
+//
+// ORGANIZER_LOCKED  Plan-literal organizer wording from PROJECT_PLAN.md sections 13 and 14: the Mission Control
+//                   heading, KPI names, the Expertise Radar and its coverage gap, and literal review labels.
+//                   Tests and accessible names depend on these strings. Claude owns them.
+// ORGANIZER_COPY    Supporting organizer text, written as neutral placeholders. Astra owns the voice: rewrite any
+//                   value, but keep every key and function signature.
+//
+// Status, type, recommendation, rubric, and expertise labels live in lib/application-config.ts.
+// =============================================================================
+
+export const ORGANIZER_LOCKED = {
+  dashboard: {
+    heading: "Mission Control",
+    kpis: {
+      submitted: "Submitted",
+      needsReview: "Needs review",
+      reviewsComplete: "Reviews complete",
+      decisionsMade: "Decisions made",
+    },
+    startReviewing: "Start reviewing",
+    expertiseRadar: "Expertise Radar",
+    coverageGap: "Coverage gap",
+  },
+  workspace: {
+    applicant: (reference: string) => `Applicant ${reference}`,
+    saveReviewAndContinue: "Save review and continue",
+    saveDraft: "Save draft",
+    nextApplication: "Next application",
+    notes: "Private organizer notes",
+    recommendation: "Recommendation",
+  },
+} as const;
+
+export const ORGANIZER_COPY = {
+  meta: {
+    titles: {
+      dashboard: "Mission Control",
+      applications: "Applications",
+      review: "Review application",
+    },
+  },
+  nav: {
+    label: "Organizer",
+    dashboard: "Dashboard",
+    applications: "Applications",
+  },
+  queue: {
+    label: "Review queue",
+    value: (reviewed: number, total: number) =>
+      total === 0 ? "No submitted applications yet" : `${reviewed} of ${total} reviewed`,
+    remaining: (remaining: number) =>
+      remaining === 1 ? "1 application needs review" : `${remaining} applications need review`,
+  },
+  rows: {
+    notSubmitted: "Not submitted",
+    notScored: "Not scored",
+    noRecommendation: "No recommendation",
+    reviewStates: {
+      complete: "Review complete",
+      inProgress: "Review in progress",
+      none: "Not reviewed",
+    },
+  },
+  dashboard: {
+    intro: "Submissions, reviews, and decisions across every application.",
+    kpisTitle: "Key numbers",
+    queueTitle: "Review queue",
+    queueEmpty: "No applications need review right now.",
+    breakdownTitle: "Applications by type and status",
+    breakdownTotal: (count: number) => (count === 1 ? "1 application" : `${count} applications`),
+    breakdownCount: (count: number, total: number) => `${count} of ${total}`,
+    radarIntro: "How many submitted Judges list each area of expertise.",
+    radarImageLabel: (areaCount: number, judgeCount: number) =>
+      `Radar chart of ${areaCount} areas of expertise across ${judgeCount} submitted ${judgeCount === 1 ? "Judge" : "Judges"}. The table after it lists the same numbers.`,
+    radarTableCaption: "Submitted Judges by area of expertise",
+    radarColumns: {
+      area: "Area of expertise",
+      judges: "Judges",
+    },
+    gapBody: "No submitted Judge lists these areas yet.",
+    noGaps: "Every area of expertise has at least one submitted Judge.",
+    noJudges: "No Judges have submitted applications yet, so every area of expertise is a coverage gap.",
+    recentTitle: "Recent submissions",
+    recentEmpty: "No applications have been submitted yet.",
+    viewAll: "View all applications",
+    emptyTitle: "No applications yet",
+    emptyBody: "These numbers fill in once applicants submit applications.",
+  },
+  applications: {
+    heading: "Applications",
+    intro: "Search, filter, and sort submitted applications.",
+    filtersTitle: "Filter applications",
+    search: "Search",
+    searchHint: "Name, email, school, or company.",
+    type: "Application type",
+    status: "Status",
+    reviewState: "Review",
+    sort: "Sort by",
+    anyType: "All types",
+    anyStatus: "All statuses except draft",
+    anyReviewState: "Reviewed or not",
+    reviewStateOptions: {
+      reviewed: "Reviewed",
+      unreviewed: "Not reviewed",
+    },
+    sortOptions: {
+      submitted_desc: "Newest submitted first",
+      submitted_asc: "Oldest submitted first",
+      score_desc: "Highest score first",
+      score_asc: "Lowest score first",
+    },
+    apply: "Apply filters",
+    clear: "Clear filters",
+    caption: (sortLabel: string) => `Applications (${sortLabel})`,
+    columns: {
+      applicant: "Applicant",
+      reference: "Reference",
+      type: "Type",
+      status: "Status",
+      submitted: "Submitted",
+      score: "Score",
+      review: "Review",
+    },
+    sortAction: (sortLabel: string) => `(sort: ${sortLabel})`,
+    email: "Email",
+    affiliation: "School or company",
+    resultCount: (total: number) => (total === 1 ? "1 application" : `${total} applications`),
+    range: (from: number, to: number, total: number) => `Showing ${from} to ${to} of ${total}`,
+    paginationLabel: "Pages",
+    pageStatus: (page: number, pageCount: number) => `Page ${page} of ${pageCount}`,
+    previousPage: "Previous page",
+    nextPage: "Next page",
+    lastPage: "Go to the last page",
+    emptyTitle: "No applications yet",
+    emptyBody: "Submitted applications will be listed here.",
+    noResultsTitle: "No applications match these filters",
+    noResultsBody: "Try a different search, or clear the filters.",
+    pastEndTitle: "There are no applications on this page",
+    pastEndBody: "The results have fewer pages than this link expects.",
+  },
+  workspace: {
+    backToList: "Back to applications",
+    submitted: "Submitted",
+    blind: {
+      on: "Blind review is on. Identifying details are hidden.",
+      off: "Identifying details are showing.",
+      reveal: "Show identifying details",
+      hide: "Hide identifying details",
+    },
+    identity: {
+      title: "Applicant identity",
+      name: "Name",
+      email: "Email",
+      affiliation: {
+        hacker: "School",
+        judge: "Company / organization",
+      },
+      links: "Links",
+      notProvided: "Not provided",
+    },
+    narrativeTitle: "Application answers",
+    scorecard: {
+      title: "Scorecard",
+      hint: (min: number, max: number) => `Score each area from ${min} (low) to ${max} (high).`,
+      anchors: {
+        low: "Little evidence",
+        middle: "Some evidence",
+        high: "Strong evidence",
+      },
+      overallScore: "Overall score",
+      overallPending: "Score every area to see the overall score.",
+      overallValue: (score: string, max: number) => `${score} out of ${max}`,
+      recommendationHint: "Your recommendation doesn't release a decision.",
+      notesHint: "Only organizers can read these notes.",
+      characterCount: (count: number, max: number) => `${count} of ${max} characters`,
+      saveReview: "Save review",
+      errorSummaryTitle: "There is a problem",
+      completedAt: "Review completed",
+      draftSavedAt: "Draft saved",
+      notSaved: "No review saved yet",
+      noScore: "Not scored",
+      noRecommendation: "No recommendation",
+      noNotes: "No notes",
+    },
+    status: {
+      saving: "Saving review…",
+      draftSaved: "Draft review saved.",
+      reviewSaved: "Review saved.",
+      revealing: "Loading identifying details…",
+      hiding: "Hiding identifying details…",
+      releasing: "Releasing decision…",
+    },
+    access: {
+      owned: {
+        title: "Another organizer is reviewing this application",
+        body: "You can read their review, but only they can change it.",
+      },
+      notSubmitted: {
+        title: "This application hasn't been submitted",
+        body: "It can be reviewed after the applicant submits it.",
+      },
+      decided: {
+        title: "A decision has been released",
+        body: "This review can no longer be changed.",
+      },
+    },
+    completed: {
+      title: "Review complete",
+      body: "You can update this review until a decision is released.",
+    },
+    continued: {
+      title: (reference: string) => `Review for Applicant ${reference} saved`,
+      body: "This is the next application that needs review.",
+    },
+    queueDone: {
+      title: "Review saved",
+      body: "No other applications need review right now.",
+    },
+    decision: {
+      title: "Decision",
+      intro: "Releasing a decision updates the applicant's status. Saving a review never releases one.",
+      legend: "Decision to release",
+      release: "Release decision",
+      chooseError: "Choose a decision to release.",
+      saveFirst: "Save your review before releasing a decision.",
+      unavailable: "Complete the review before releasing a decision.",
+      confirmTitle: (label: string) => `Release the ${label} decision?`,
+      confirmBody: "The applicant's portal will show this decision, and it can't be changed here afterward.",
+      confirm: "Confirm release",
+      cancel: "Cancel",
+      released: (label: string) => `Decision released: ${label}`,
+      releasedAt: "Released",
+    },
+    notFound: {
+      title: "Application not found",
+      body: "The link may be wrong, or the application may no longer exist.",
+    },
+  },
+  notices: {
+    unauthenticated: {
+      title: "You've been signed out",
+      body: "Sign in again in a new tab, then try again. Your review stays on this page.",
+    },
+    forbidden: {
+      title: "You don't have access to this",
+      body: "Reload the page, or sign in with an organizer account.",
+    },
+    not_found: {
+      title: "We couldn't find this application",
+      body: "Reload the page to check whether it still exists.",
+    },
+    validation_failed: {
+      title: "Some review answers couldn't be saved",
+      body: "Check your answers and try again.",
+    },
+    conflict: {
+      title: "This review changed somewhere else",
+      body: "Try saving again, or reload the latest version.",
+    },
+    rate_limited: { title: "Too many attempts", body: "Wait a moment, then try again." },
+    invalid_status_transition: {
+      title: "That change isn't allowed right now",
+      body: "The application's status may have changed. Reload the page to see it.",
+    },
+    review_owned_by_another_organizer: {
+      title: "Another organizer is reviewing this application",
+      body: "Reload the page to see their review.",
+    },
+    review_locked: {
+      title: "A decision has been released",
+      body: "Reviews can't be changed after a decision is released. Reload the page to see it.",
+    },
+    review_already_completed: {
+      title: "This review is already complete",
+      body: "Reload the page to see the latest version.",
+    },
+    review_not_completed: {
+      title: "Complete the review first",
+      body: "Save a complete review before releasing a decision.",
+    },
+    unexpected_error: { title: "Something went wrong", body: "Try again in a moment." },
+    network: {
+      title: "We couldn't reach CalHacks Mission Control",
+      body: "Check your connection and try again. Your review stays on this page.",
+    },
+    stale_deployment: { title: "CalHacks Mission Control was updated", body: "Reload the page to continue." },
+  },
+} as const;
