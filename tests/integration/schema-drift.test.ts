@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -24,7 +27,7 @@ import { calculateApplicationCompletion } from "@/lib/validation/completion";
 import { RUBRIC_DIMENSIONS, calculateOverallScore } from "@/lib/validation/review";
 
 import { validHackerResponses, validJudgeResponses } from "../fixtures/applications";
-import { queryRows } from "./helpers";
+import { queryRows, withDatabase } from "./helpers";
 
 const FIXTURES: Record<ApplicationType, Record<string, unknown>> = {
   hacker: validHackerResponses,
@@ -502,5 +505,38 @@ describe("database security posture", () => {
          )`,
     );
     expect(unpinned).toEqual([]);
+  });
+
+  it("revokes client access to Supabase's automatic RLS function on projects that have it", async () => {
+    // Hosted projects with automatic RLS get public.rls_auto_enable(). Local stacks do not, so a stand-in is created
+    // inside a transaction that is rolled back. The migration must also do nothing when the function is absent.
+    const migration = readFileSync(
+      path.join(process.cwd(), "supabase/migrations/20260911200000_restrict_rls_auto_enable.sql"),
+      "utf8",
+    );
+    const privilegeQuery = `select has_function_privilege('anon', 'public.rls_auto_enable()', 'EXECUTE') as anon,
+                                   has_function_privilege('authenticated', 'public.rls_auto_enable()', 'EXECUTE') as authenticated`;
+
+    const privileges = await withDatabase(async (db) => {
+      await db.query("begin");
+      try {
+        await db.query(migration);
+        await db.query(
+          `create function public.rls_auto_enable() returns event_trigger
+           language plpgsql security definer set search_path = '' as $$ begin end $$`,
+        );
+        const before = (await db.query(privilegeQuery)).rows[0];
+        await db.query(migration);
+        const after = (await db.query(privilegeQuery)).rows[0];
+        return { before, after };
+      } finally {
+        await db.query("rollback");
+      }
+    });
+
+    expect(privileges).toEqual({
+      before: { anon: true, authenticated: true },
+      after: { anon: false, authenticated: false },
+    });
   });
 });

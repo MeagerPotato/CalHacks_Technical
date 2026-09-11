@@ -1,6 +1,6 @@
 # Database, security model, and seed data
 
-The schema lives in `supabase/migrations`. Migrations apply in filename order: locally with `npm run db:reset`, and on a hosted project with `supabase db push`. The generated TypeScript types are in `types/database.ts`; regenerate them with `npm run db:types` after any schema change.
+The schema lives in `supabase/migrations`. Migrations apply in filename order. Locally, `npm run db:reset` applies them. On the hosted project, the Supabase GitHub integration applies new migrations when they merge to `main` (see [environment-and-deployment.md](environment-and-deployment.md#deployment-decisions)). The generated TypeScript types are in `types/database.ts`; regenerate them with `npm run db:types` after any schema change.
 
 ## Migrations
 
@@ -13,6 +13,7 @@ The schema lives in `supabase/migrations`. Migrations apply in filename order: l
 | `20260910220400_organizer_read_functions.sql` | Organizer-only read functions for the dashboard, filtered listing, and the review queue. |
 | `20260911090000_round2_about_you.sql` | Gives both forms the shared About you section, which replaces preferred name, location, and relevant links. The section holds full name, birthdate, country and city of residence, optional LinkedIn, GitHub, and Devpost profile links, and an optional biography. Adds the `date` and `profile_link` field kinds, `private.country_codes()`, and `private.profile_link_pattern(key)`, and drops `private.http_link_pattern()`. Existing drafts keep their preferred name as the full name and their location as the city, and their links are dropped. The migration refuses to run while any submitted application exists. The organizer list now reads the applicant name from `fullName`. |
 | `20260911090100_round2_dual_applications.sql` | Lets one account hold a Hacker and a Judge application. Adds `profiles.application_types`, reads `application_types` from signup metadata, replaces the one-per-account constraint with `applications_one_per_type`, and lets applicants insert a draft of any type their account applies for (`private.current_application_types()`). |
+| `20260911200000_restrict_rls_auto_enable.sql` | Revokes `EXECUTE` on `public.rls_auto_enable()` from `public`, `anon`, and `authenticated` when that function exists. Supabase's automatic RLS option creates this `SECURITY DEFINER` event trigger function on hosted projects, and the security advisor reported it as callable through the Data API. The `ensure_rls` event trigger still runs it, because triggers do not check `EXECUTE` when they fire. Local stacks have no such function, so the migration does nothing there. |
 
 ## Enums
 

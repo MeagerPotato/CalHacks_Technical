@@ -1,6 +1,6 @@
 # Astra handoff: creative pass, round 2
 
-> **Status:** Astra delivered round 2 on 2026-09-11 with no open requests, and it passed the full test suites. Keep this brief for follow-up design passes.
+> **Status:** Astra delivered round 2 on 2026-09-11 with no open requests, and it passed the full test suites. The next pass starts with [Queued for the next pass](#queued-for-the-next-pass).
 
 The product works end to end:
 
@@ -55,6 +55,15 @@ npm run dev
 - **http://localhost:3000** is the landing page, with the live timeline and countdowns. `/login` and `/signup` render without Supabase, but submitting them needs the local stack.
 
 To click through real pages, start Docker Desktop, run `npm run db:start`, and create `.env.local` as described in `docs/infrastructure/environment-and-deployment.md`. Seed accounts cannot sign in, so sign up a new Hacker or Judge (choose both to see the switcher). Claude gives the user a local Organizer login separately.
+
+## Queued for the next pass
+
+Start here next time. Each item is inside your write set.
+
+1. **Applications filter row.** On the organizer applications page at 1280px, the five filters share one row (`xl:grid-cols-5` in `components/organizer/ApplicationFilters.tsx`). The Status select clips its default option, `ORGANIZER_COPY.applications.anyStatus` ("All statuses except draft"), to "All statuses except dra".
+   - Make every filter show its longest option in full at 1280px and wider. You could rebalance the columns, wrap the filters onto two rows, or tighten the option copy in voice.
+   - Keep the labels, hints, `select` elements, and the Apply filters button.
+   - See it in the applications section of `/dev/gallery/organizer`.
 
 ## Round 2 tasks, in priority order
 
