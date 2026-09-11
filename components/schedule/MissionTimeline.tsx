@@ -73,11 +73,15 @@ export function MissionTimeline({ view, headingId = "mission-timeline-title" }: 
                   <Timestamp value={stop.when} fallback={stop.whenText ?? ""} />
                 </p>
               ) : null}
-              <div>
-                <Badge tone={STATE_TONES[stop.state]} icon={STATE_ICONS[stop.state]}>
-                  {stop.stateLabel}
-                </Badge>
-              </div>
+              {/* An upcoming stop that is not the current one shows no badge. The current stop always keeps its state
+                  as text, so it is never marked by color alone. */}
+              {stop.isCurrent || stop.state !== "upcoming" ? (
+                <div>
+                  <Badge tone={STATE_TONES[stop.state]} icon={STATE_ICONS[stop.state]}>
+                    {stop.stateLabel}
+                  </Badge>
+                </div>
+              ) : null}
             </li>
           ))}
         </ol>

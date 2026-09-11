@@ -27,7 +27,7 @@ Claude owns everything else: routes, data, state, validation, focus management, 
 |---|---|---|
 | Application switcher (Hacker and Judge) | `components/portal/ApplicationSwitcher.tsx`, inside `PortalWelcome` | `/dev/gallery?portal=both-hacker#gallery-portal-view` and `?portal=both-judge` |
 | Mission timeline | `components/schedule/MissionTimeline.tsx`, on the landing page | `/`, and the `Schedule: …` sections of `/dev/gallery` (four moments of the schedule) |
-| Countdowns (time to launch, time to landing) | `components/schedule/CountdownPanel.tsx`, on the landing page and both portal dashboards | `/`, and `#gallery-schedule` in `/dev/gallery` (live, with pause) |
+| Countdowns (time to launch, time to landing) | `components/schedule/CountdownPanel.tsx`, on the landing page and both portal dashboards | `/`, and `#gallery-schedule` in `/dev/gallery` (live) |
 | Required-question asterisk | `RequiredMarker` in `components/ui/Field.tsx`, and the legend in `SectionPanel` | `#gallery-fields` in `/dev/gallery`, and every editor section |
 | Country of residence picker | `components/ui/Combobox.tsx` | `#gallery-fields` in `/dev/gallery` (interactive), and the editor's About you section |
 | Signup choice of Hacker, Judge, or both | `CheckboxGroup` on `/signup` | `/signup` (renders without Supabase) |
@@ -46,7 +46,7 @@ npm run dev
 - **http://localhost:3000/dev/gallery** is your design surface. It renders every applicant view and state from the same view-model functions the product uses:
   - primitives, fields with errors and the required asterisk, the country picker, every notice, and page states;
   - each art slot, with a "Replay motion" button for play-once motion;
-  - the live countdowns, and the timeline with paused countdowns at four moments of the schedule;
+  - the live countdowns, and the timeline with the countdown panel at four moments of the schedule;
   - the portal dashboards (including both switcher states), editor pieces, review, submitted view, and liftoff;
   - the mission tracker for submitted, in review, Accepted, and Waitlisted.
 
@@ -67,6 +67,8 @@ Shipped on 2026-09-11:
 3. **Mission clock.** The gold dot in `CountdownPanel` shows only from `sm`.
 4. **Copy.** The timeline states, `COPY.schedule.timeline.toBeAnnounced`, and both countdown captions now say plainly what they mean. The captions end with a colon because `Timestamp` prints the date right after them.
 
+Changes the user asked for after the pass, on the same day: the mission clock moved to sit between the flight plan and the promise cards, the countdown panel lost its pause toggle, and an upcoming stop that is not the current one shows no state badge.
+
 Open polish for any later pass: while the stops stack, the dashed line runs past the last marker to the bottom of the last card.
 
 The judging rubric may change the scorecard's dimensions later. `Scorecard` and `RubricScoreField` render the dimensions from data, so your styling holds for any list of dimensions.
@@ -74,8 +76,8 @@ The judging rubric may change the scorecard's dimensions later. `Scorecard` and 
 ### Rules carried over from round 2
 
 - The switcher's current application stays distinguishable without color. `aria-current="page"` is the styling hook.
-- Every timeline stop keeps its name, date, and state as text.
-- The countdown pause toggle stays visible and easy to find (WCAG 2.2.2), and a complete countdown shows its text instead of digits.
+- Every timeline stop keeps its name and date as text, and the current stop keeps its state as text.
+- The countdown panel has no controls of its own, and a complete countdown shows its text instead of digits.
 - On the organizer pages, keep the radar's table alternative, the counts beside the bars, and the blind-mode status text.
 
 ## Your write set
@@ -144,7 +146,6 @@ Accessible names come from `content/copy.ts`, and the tests import them, so rewo
 | `Notice` | `data-tone` |
 | Switcher link | `data-type` (`hacker`, `judge`), `data-state` (`current`, `other`) |
 | Timeline stop | `data-state` (`complete`, `active`, `upcoming`), `data-current` |
-| `countdowns` | `data-paused` |
 | Countdown (`countdown-<id>`) | `data-state` (`counting`, `complete`) |
 | Countdown parts | `data-countdown-digits` (the digit row), `data-unit` (`days`, `hours`, `minutes`, `seconds`), `data-countdown-value`, `data-countdown-summary` |
 | Required marker and legend | `data-required-marker`, `data-required-legend` |
@@ -160,14 +161,14 @@ These attributes are also your styling hooks. For example, use `data-[state=comp
 - `ErrorSummary` has `tabIndex={-1}` and `aria-labelledby`.
 - `LiveStatus` has `role="status"`, `aria-live="polite"`, and `aria-atomic="true"`, and stays visually hidden.
 - The Submit application button has `aria-describedby="review-irreversible"`.
-- The countdown pause toggle keeps one label and reports its state with `aria-pressed`. The digit row is `aria-hidden`. The summary under it is visually hidden (`sr-only`) but never `aria-hidden`; a complete countdown shows its summary visibly.
+- The countdown digit row is `aria-hidden`. The summary under it is visually hidden (`sr-only`) but never `aria-hidden`; a complete countdown shows its summary visibly.
 - The required marker is `aria-hidden`; required controls announce `aria-required`, and required groups add visually hidden "(required)" text.
 - The country picker follows the WAI-ARIA combobox pattern: `input[role="combobox"]` with `aria-expanded`, `aria-controls`, and `aria-activedescendant`; `ul[role="listbox"]` with `li[role="option"][aria-selected]`.
 
 **Elements**
 
 - The readiness list, mission legs, and timeline stops are `ol > li`. Timeline stop names are `h3`.
-- The countdown panel is a `section` named by its `h2`, with a `ul > li` per countdown whose title is an `h3`. The pause toggle is a `button`.
+- The countdown panel is a `section` named by its `h2`, with a `ul > li` per countdown whose title is an `h3`.
 - The switcher is `nav > ul > li > a`.
 - `AnswerSummary` uses `dl`, `dt`, and `dd`.
 - Timestamps and dates are `time[dateTime]`.
@@ -281,7 +282,7 @@ The timeline and countdowns have no art slot. Draw their rocket, planets, and fl
 - **Landing.** `--duration-landing` must equal `LANDING_DURATION_MS`. The decision card has `data-reveal="after-landing"` and fades in after that delay. The decision text is in the DOM from the start, so screen readers never wait for the animation.
 - **Just completed.** When a section has just been completed, `[data-just-completed="true"] [data-progress-line]` draws the readiness progress line once.
 - **Autoplay limit.** Autoplaying motion must stop within 5 seconds (WCAG 2.2.2). `--animate-float` runs two alternating cycles (4.8 seconds) and ends at rest; keep any loop you add finite too. Nothing may flash more than three times per second.
-- **Countdowns.** The digits already update every second, and the pause toggle is what makes that update acceptable. Do not add an animation that runs on every tick, and do not loop the rocket on the timeline.
+- **Countdowns.** The digits already update every second. Do not add an animation that runs on every tick, and do not loop the rocket on the timeline.
 - **Loading spinners.** `animate-spin` marks work that is still running, so it keeps Tailwind's infinite `--animate-spin`. Do not override that token: a spinner that stops mid-save looks frozen. A unit test checks this.
 - **Pressed states.** `pressable` lifts a control on hover and sinks it on press. A transform moves the hit area too, so the utility's transparent `::after` layer covers the ground the face just left. If you change the offsets, resize that layer to match. An end-to-end test clicks 1px inside the top and bottom edges.
 - **Performance.** Animate `transform` and `opacity` only.

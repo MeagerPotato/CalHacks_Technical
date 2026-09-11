@@ -104,14 +104,14 @@ If onboarding finds the session expired, it sends the applicant to sign in and b
 
 `EVENT_SCHEDULE` in `lib/event.ts` holds the dates. Pages call `toScheduleViews(EVENT_SCHEDULE)` once per request. It reads the clock outside render and builds both view models for that moment:
 
-- `toTimelineView` (`lib/view-models/schedule.ts`) builds the landing page's four stops: applications open, application deadline, results released, and event dates. Each stop is `complete` once it is over, `active` while in progress (applications while open, the event while it runs), and `upcoming` otherwise. The current stop is the active one, or the next upcoming one when none is; its state label is `COPY.schedule.timeline.states.next`. After the event, no stop is current.
+- `toTimelineView` (`lib/view-models/schedule.ts`) builds the landing page's four stops: applications open, application deadline, results released, and event dates. Each stop is `complete` once it is over, `active` while in progress (applications while open, the event while it runs), and `upcoming` otherwise. The current stop is the active one, or the next upcoming one when none is; its state label is `COPY.schedule.timeline.states.next`. After the event, no stop is current. `MissionTimeline` shows the state as a badge on every stop except an upcoming stop that is not the current one.
 - `toCountdownsView` builds the countdown panel: `launch` counts to the application deadline, and `landing` counts to midnight Pacific on the first event day. Each countdown appears only when its date is set.
 
 `LiveCountdowns` (`app/_components/LiveCountdowns.tsx`) renders `CountdownPanel` on the landing page and both portal dashboards:
 
 - **Ticks.** `useNow` (`lib/client/use-now.ts`) is one shared clock that ticks just after each whole second and stops when nothing listens. `toCountdownReading` (`lib/view-models/countdown.ts`) runs on every tick. It formats only whole numbers, so the server and the browser produce the same text.
 - **Hydration.** The server render and hydration read the server clock (`renderedAt`), then the browser clock takes over.
-- **Pause.** The toggle keeps its label and reports its state with `aria-pressed`. It freezes both readings and stops the ticks, because content that updates on its own for more than five seconds must be pausable (WCAG 2.2.2).
+- **No pause control.** The panel has no controls of its own; the readings follow the clock. The pause toggle was removed on 2026-09-11 at the user's request, so the per-second update is no longer pausable, which WCAG 2.2.2 asks for. Restoring it means putting the toggle back in `CountdownPanel` and the paused state back in `LiveCountdowns`.
 - **Screen readers.** The digits are `aria-hidden`. A visually hidden summary gives the time left to the minute.
 
 ## Accessibility

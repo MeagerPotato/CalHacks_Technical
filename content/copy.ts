@@ -111,7 +111,6 @@ export const COPY = {
     },
     countdown: {
       title: "Mission clock",
-      pause: "Pause mission clock",
       launch: {
         title: "Time to launch",
         caption: "Applications close:",

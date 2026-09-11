@@ -245,8 +245,6 @@ export interface CountdownTimerView {
 /** The countdown panel on the landing page and the portal. Null from the builder when no countdown has a date. */
 export interface CountdownsView {
   title: string;
-  /** Label of the pause toggle. It stays the same; `aria-pressed` reports the state. */
-  pauseLabel: string;
   /** The server clock (epoch milliseconds) when the page rendered. The server render and hydration read from it. */
   renderedAt: number;
   timers: CountdownTimerView[];

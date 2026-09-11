@@ -62,7 +62,6 @@ describe("toCountdownsView", () => {
     const now = at("2026-09-11T12:00:00-07:00");
     expect(toCountdownsView(SCHEDULE, now)).toEqual({
       title: countdown.title,
-      pauseLabel: countdown.pause,
       renderedAt: now,
       timers: [
         {

@@ -24,7 +24,6 @@ import { SubmittedStatusCard } from "@/components/portal/SubmittedStatusCard";
 import { CountdownPanel } from "@/components/schedule/CountdownPanel";
 import { MissionTimeline } from "@/components/schedule/MissionTimeline";
 import { AppLink } from "@/components/ui/AppLink";
-import { Button } from "@/components/ui/Button";
 import { COPY, LOCKED } from "@/content/copy";
 import { APPLICATION_STATUS_LABELS, APPLICATION_TYPE_LABELS } from "@/lib/application-config";
 import type { DecisionStatus } from "@/lib/domain/enums";
@@ -343,7 +342,6 @@ const TIMELINE_VIEW: TimelineView = {
 
 const COUNTDOWNS_VIEW: CountdownsView = {
   title: COPY.schedule.countdown.title,
-  pauseLabel: COPY.schedule.countdown.pause,
   renderedAt: Date.parse("2026-09-11T19:00:00.000Z"),
   timers: [
     { id: "launch", ...COPY.schedule.countdown.launch, target: DEADLINE, endsAt: DEADLINE.iso },
@@ -366,7 +364,7 @@ const COUNTDOWN_READINGS: CountdownReadingView[] = [
   { id: "landing", state: "complete", units: [], summary: COPY.schedule.countdown.landing.completeText },
 ];
 
-const COUNTDOWN_PANEL = <CountdownPanel view={COUNTDOWNS_VIEW} readings={COUNTDOWN_READINGS} paused={false} />;
+const COUNTDOWN_PANEL = <CountdownPanel view={COUNTDOWNS_VIEW} readings={COUNTDOWN_READINGS} />;
 
 const LANDING_PROPS = { timeline: TIMELINE_VIEW, countdowns: COUNTDOWN_PANEL };
 
@@ -585,9 +583,9 @@ describe("LandingView", () => {
     expect(text).toContain(LOCKED.landing.heroSubtitle);
     expect(text).toContain(COPY.landing.tagline);
     expect(textsOf(html, "h2")).toEqual([
-      COUNTDOWNS_VIEW.title,
       COPY.landing.portalCard.title,
       TIMELINE_VIEW.title,
+      COUNTDOWNS_VIEW.title,
       LOCKED.landing.promises.assemble,
       LOCKED.landing.promises.launch,
       LOCKED.landing.promises.explore,
@@ -649,10 +647,10 @@ describe("LandingView", () => {
     );
   });
 
-  it("places the countdowns after the hero and the timeline before the promise cards", () => {
+  it("places the countdowns between the timeline and the promise cards", () => {
     const html = renderToStaticMarkup(<LandingView {...LANDING_PROPS} />);
     const main = expectSingleMain(html);
-    const order = ["countdowns", "landing-portal-card", "mission-timeline", "landing-promises"];
+    const order = ["landing-portal-card", "mission-timeline", "countdowns", "landing-promises"];
     expect(testIdsIn(main).filter((testId) => order.includes(testId))).toEqual(order);
     expect(main.indexOf("<h1")).toBeLessThan(main.indexOf('data-testid="countdowns"'));
 
@@ -1030,7 +1028,8 @@ describe("MissionTimeline", () => {
       `${COPY.schedule.timeline.stops.applicationsOpen}${COPY.schedule.timeline.states.complete}`,
       `${COPY.schedule.timeline.stops.applicationDeadline}${DEADLINE.label}${COPY.schedule.timeline.states.complete}`,
       `${COPY.schedule.timeline.stops.resultsReleased}${RESULTS_DAY.label}${COPY.schedule.timeline.states.next}`,
-      `${COPY.schedule.timeline.stops.event}${COPY.schedule.timeline.toBeAnnounced}${COPY.schedule.timeline.states.upcoming}`,
+      // An upcoming stop that is not the current one shows no state badge.
+      `${COPY.schedule.timeline.stops.event}${COPY.schedule.timeline.toBeAnnounced}`,
     ]);
     // A stop with neither a date nor stand-in text has no empty date line.
     expect(tagsNamed(byTestId(html, "timeline-stop-applicationsOpen"), "p")).toHaveLength(0);
@@ -1044,14 +1043,13 @@ describe("MissionTimeline", () => {
 });
 
 describe("CountdownPanel", () => {
-  const props = { view: COUNTDOWNS_VIEW, readings: COUNTDOWN_READINGS, paused: false };
+  const props = { view: COUNTDOWNS_VIEW, readings: COUNTDOWN_READINGS };
 
   it("shows each countdown with its target, hides the changing digits, and gives assistive technology a summary", () => {
     const html = renderToStaticMarkup(<CountdownPanel {...props} />);
     const root = rootOf(html);
     expect(root.name).toBe("section");
     expect(root.attrs["data-testid"]).toBe("countdowns");
-    expect(root.attrs["data-paused"]).toBe("false");
     expect(tagById(html, root.attrs["aria-labelledby"]).name).toBe("h2");
     expect(textsOf(html, "h2")).toEqual([COUNTDOWNS_VIEW.title]);
     expect(textsOf(html, "h3")).toEqual(COUNTDOWNS_VIEW.timers.map((timer) => timer.title));
@@ -1093,24 +1091,11 @@ describe("CountdownPanel", () => {
     expect(textOf(done)).toBe(COPY.schedule.countdown.landing.completeText);
     expect(rootOf(done).attrs.class.split(" ")).not.toContain("sr-only");
 
-    const button = onlyTag(html, "button");
-    expect(button.attrs.type).toBe("button");
-    expect(button.attrs["aria-pressed"]).toBe("false");
-    expect(textsOf(html, "button")).toEqual([COUNTDOWNS_VIEW.pauseLabel]);
+    // The panel has no controls of its own.
+    expect(tagsNamed(html, "button")).toHaveLength(0);
   });
 
-  it("keeps the toggle label and reports a pause with aria-pressed", () => {
-    const html = renderToStaticMarkup(<CountdownPanel {...props} paused />);
-    expect(rootOf(html).attrs["data-paused"]).toBe("true");
-    expect(onlyTag(html, "button").attrs["aria-pressed"]).toBe("true");
-    expect(textsOf(html, "button")).toEqual([COUNTDOWNS_VIEW.pauseLabel]);
-  });
-
-  it("attaches the pause handler only when one is passed, and uses the heading id it is given", () => {
-    const onTogglePause = vi.fn();
-    expect(elementsOfType(CountdownPanel({ ...props, onTogglePause }), Button)[0].props.onClick).toBe(onTogglePause);
-    expect(elementsOfType(CountdownPanel(props), Button)[0].props.onClick).toBeUndefined();
-
+  it("uses the heading id it is given", () => {
     const html = renderToStaticMarkup(<CountdownPanel {...props} headingId="gallery-countdowns" />);
     expect(rootOf(html).attrs["aria-labelledby"]).toBe("gallery-countdowns");
     expect(tagById(html, "gallery-countdowns").name).toBe("h2");
