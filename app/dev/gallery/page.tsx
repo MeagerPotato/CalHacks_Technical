@@ -50,6 +50,7 @@ import { ROUTES } from "@/lib/routes";
 import { toScheduleViews } from "@/lib/view-models/schedule";
 
 import { LiveCountdowns } from "../../_components/LiveCountdowns";
+import { ComboboxExample } from "./_components/ComboboxExample";
 import { MotionReplay } from "./_components/MotionReplay";
 import { PendingExample } from "./_components/PendingExample";
 import {
@@ -162,8 +163,12 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
         <Timestamp value={null} fallback={COPY.portal.deadlineTba} />
       </GallerySection>
 
-      <GallerySection id="gallery-fields" title="Form fields" description="Hints, counters, errors, and choice limits.">
-        <Field id="gallery-field-name" label="Preferred name" hint={COPY.editor.hints.maxCharacters(80)} required>
+      <GallerySection
+        id="gallery-fields"
+        title="Form fields"
+        description="Required asterisks, hints, counters, errors, choice limits, and the country picker."
+      >
+        <Field id="gallery-field-name" label="Full name" hint={COPY.editor.hints.maxCharacters(120)} required>
           {(control) => (
             <TextInput
               id={control.id}
@@ -174,6 +179,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
             />
           )}
         </Field>
+        <ComboboxExample />
         <Field
           id="gallery-field-bio"
           label="Short biography"

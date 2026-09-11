@@ -88,6 +88,16 @@ After changing `supabase/config.toml`, restart the stack with `npm run db:stop` 
 
 ### Local Organizer account
 
+The quickest way is the script. With the local stack running:
+
+```bash
+npm run organizer:create
+```
+
+It signs up `organizer@mission-control.test` (or the email passed after `--`) through local Supabase Auth and promotes it with `private.promote_to_organizer`. It refuses a non-local stack and an email that already has an account, and it prints a generated password once without writing it anywhere. `npm run db:reset` deletes the account, so run the script again after a reset.
+
+To do the same by hand:
+
 1. Create the account yourself. Sign up at http://localhost:3000/signup and stop at onboarding without starting an application, or use Studio → Authentication → Add user.
 2. Immediately, in Studio's SQL editor, run:
 

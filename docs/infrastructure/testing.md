@@ -45,6 +45,9 @@ Pure TypeScript tests with no network or database:
 | `editor-reducer.test.ts` | The editor reducer: save results rebased onto newer data, edits typed during a save, error clearing, just-completed sections, focus requests, locking, and submission phases. |
 | `view-models.test.ts` | Readiness and section-navigation states, answer summaries with option labels and missing text, mission views for every status (never an ETA or percentage), and portal views, including the switcher between a Hacker and a Judge application. |
 | `view-contracts-pages.test.tsx`, `view-contracts-application.test.tsx` | The DOM contract of the landing, auth, portal, mission, timeline, and countdown views, and of the editor, review, submitted, and liftoff views. Also that no class name anywhere in `components/` puts an underscore in a data or aria variant value, which Tailwind would read as a space. |
+| `organizer-dashboard-view.test.ts`, `organizer-applications-view.test.ts` | The dashboard view (KPIs, queue progress, status breakdown, the expertise radar and its coverage gaps, recent submissions by blind reference) and the applications page view (rows, sorting links, pagination, empty and no-result states). |
+| `organizer-review-view.test.ts`, `organizer-scorecard-feedback.test.ts` | The review workspace: narrative answers that never show identifying fields, the identity view in About you order, blind mode, the header and queue, and decision states. Also scorecard values, payloads, overall scores, error mapping, and organizer notices. |
+| `view-contracts-organizer.test.tsx` | The DOM contract of every organizer view. |
 
 ## Integration tests (`tests/integration`)
 
@@ -92,7 +95,7 @@ These run the real Server Actions and data-access functions against local Supaba
 Playwright drives a production build (`next build`, then `next start -p 3100`) in Chromium against local Supabase. Reduced motion is emulated unless a test turns it off.
 
 - Every account is created by a real signup.
-- Organizer steps run through a promoted Organizer's own publishable-key client, so RLS and the workflow triggers apply exactly as they will for the Phase 3 pages.
+- Organizer workflow setup runs through a promoted Organizer's own publishable-key client, so RLS and the workflow triggers apply exactly as they do for the organizer pages. `organizer.spec.ts` drives those pages through the UI.
 
 | File | Covers |
 |---|---|
@@ -102,7 +105,8 @@ Playwright drives a production build (`next build`, then `next start -p 3100`) i
 | `dual-applications.spec.ts` | One signup that applies as a Hacker and a Judge: onboarding creates both drafts, the portal switcher moves between the two dashboards and marks the current one (with an axe check), and submitting the Judge application leaves the Hacker draft as it was. A single-application account has no switcher, and a type it does not hold redirects to its own application. |
 | `schedule.spec.ts` | The landing page timeline lists the four stops in order with the configured dates, with at most one current stop. With Playwright's clock, the countdowns switch to the browser clock after hydration, tick every second, freeze while the pause toggle is pressed (by mouse), and resume from the keyboard. |
 | `mission-states.spec.ts` | The tracker for submitted, in review, Accepted, and Waitlisted applications, driven by real organizer workflow writes and timestamps. Drafts redirect to the portal, and the decision is revealed only after the landing. |
-| `access.spec.ts` | Signed-out redirects that keep the destination, Organizers kept out of the portal, and applicants kept out of organizer pages and other applicants' answers. Also: the development gallery is hidden in production, and the callback shows its error notice. |
+| `access.spec.ts` | Signed-out redirects that keep the destination (organizer pages included), Organizers kept out of the portal, and applicants redirected from organizer pages to their portal without seeing another applicant's answers. Also: the development gallery is hidden in production, and the callback shows its error notice. |
+| `organizer.spec.ts` | Signed-out and applicant visitors kept out of organizer pages (the page never contains seeded names or emails). Organizer sign-in to the dashboard, with axe. Table filters, sorting, reload, no results, Clear filters, and Back, all reflected in the URL. Blind review, with seeded secrets absent from the page until identity is revealed. A draft review save, a complete review with Save review and continue to the next application, and a decision release with Cancel and Confirm, checked in the database. A keyboard-only pass. |
 | `a11y-keyboard.spec.ts` | axe WCAG 2.1 A and AA checks on public pages and on applicant pages in their key states (with the `beforeunload` warning when leaving unsaved answers), the skip link and focus ring (focus moves without a fragment history entry), and a keyboard-only signup, onboarding, error fix, and submission. |
 | `editor-recovery.spec.ts` | Editor failures, with Server Action calls intercepted in the browser. A dropped connection: a failed save's Try again keeps focus and repeats the notice title in the live status (also when the section has invalid answers and the error summary takes focus), a retry that succeeds returns focus to the section heading, Check status after an unconfirmed submission keeps focus in the editor, and Try again after a failed background save saves the draft without submitting. A new deployment (an unrecognized action): the retry's Reload notice receives focus. |
 
@@ -126,5 +130,4 @@ Set `E2E_REUSE_SERVER=1` to reuse a server that is already running on port 3100.
   - The proxy does not check roles. An applicant session reaches `/organizer`, and the page guard (`requireOrganizer`) must redirect it.
 - The effect of `revalidatePath` on rendered pages is covered only indirectly, by E2E flows that reload or navigate after a save or submission.
 - Editor failures that need a server error rather than a dropped connection, such as `conflict` ("Reload latest") or `rate_limited`, are covered by the reducer and feedback unit tests only. `editor-recovery.spec.ts` covers the network paths.
-- Visual appearance. The E2E suite checks behavior, the DOM contract, and axe rules, not pixels, so look-and-feel changes need a manual pass on `/dev/gallery` and the real pages.
-- Organizer pages (Phase 3).
+- Visual appearance. The E2E suite checks behavior, the DOM contract, and axe rules, not pixels, so look-and-feel changes need a manual pass on `/dev/gallery`, `/dev/gallery/organizer`, and the real pages.

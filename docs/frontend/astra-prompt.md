@@ -1,45 +1,65 @@
 # Prompt for Astra
 
-Paste everything below the line into Astra, and give it access to the repository. The files it should read first are listed in the prompt.
+Paste everything below the line into Astra, and give it access to the repository on the `phase-2-applicant` branch. The files it should read first are listed in the prompt.
 
 ---
 
-You're doing the creative pass on **CalHacks Mission Control**, the Cal Hacks application portal. The product already works end to end:
+You're taking **CalHacks Mission Control**, the Cal Hacks application portal, for a **second creative pass**. Your first pass set the brand, art, motion, and polish. Since then Claude Code has built new surfaces with a plain functional baseline, and they need your design:
 
-- signup, login, and onboarding;
-- the Hacker and Judge editor, with drafts and Launch Readiness;
-- review and submission;
-- the portal and the Rocket Mission Tracker.
+- **An application switcher.** One account can now apply as both a Hacker and a Judge and switch between the two dashboards.
+- **A mission timeline and live countdowns.** The landing page has a timeline of the Cal Hacks 13.0 schedule, and the landing page and portal have countdowns to the application deadline ("time to launch") and to the event ("time to landing").
+- **A red required-question asterisk**, and a searchable country picker in the application's About you section.
+- **Signup and onboarding updates.** Signup has Hacker and Judge checkboxes (one or both), and onboarding shows "Applying as" badges.
+- **The organizer pages:** the Mission Control dashboard, the applications table, and the blind review workspace.
 
-Claude Code built all of it with a plain baseline style and neutral placeholder art. Your job is to make it look and feel like the product in the plan, without touching how it works.
+Nothing about how the product works should change. Your job is to make these surfaces look and feel like the rest of the product.
 
 **Read these first, in this order:**
 
-1. `docs/frontend/astra-handoff.md`: your brief, write set, frozen contract, motion rules, and tasks. It is the source of truth for this pass.
-2. `PROJECT_PLAN.md` sections 1, 13, and 14: the product thesis, the visual and creative direction, and the page-level experience. Section 0 has an ownership amendment explaining why your scope is creative only.
-3. `content/copy.ts`, `app/globals.css`, `app/fonts.ts`, and `components/art/`.
+1. `docs/frontend/astra-handoff.md`: your round 2 brief, write set, frozen contract, motion rules, and tasks. It is the source of truth for this pass. Start with "What is new in round 2" and "Round 2 tasks".
+2. `docs/frontend/organizer.md`: the organizer views' contract, especially "What Astra may and may not change".
+3. `PROJECT_PLAN.md` sections 13 and 14: the visual direction and the page-level experience.
+4. `content/copy.ts`, `app/globals.css`, and the components named in the handoff's table of new surfaces.
 
-**Your scope (creative only):**
+**Top priority: the application switcher.** The user sketched it. In the portal welcome, where the "Hacker" badge sits today, draw one segmented pill reading "Hacker | Judge":
 
-- **Art.** Original illustrations replacing the `components/art/` placeholders: the mark, the hero, the animal engineer, the rocket stages, stickers, and the liftoff and landing moments.
-- **Motion.** Choreography beyond the baseline, in CSS and SVG only, following the reduced-motion and duration rules.
-- **Polish.** Type scale, spacing, surfaces, and states, through `app/globals.css` tokens, the class maps, and `className` strings in `components/**`.
-- **Voice.** The copy in `COPY`, `FIELD_COPY`, and `SECTION_COPY`. `LOCKED` strings are plan-literal and stay as they are.
-- **QA.** A final look-and-feel pass at 375px and 1280px, with reduced motion on and off.
+- The application on screen is filled: **Hacker in the coral red** and **Judge in the sky blue** from the existing palette.
+- The application not on screen stays the **beige page color**.
+- Keep everything else on that page roughly the same.
+- The switcher only appears for accounts holding both applications. Style it through `SWITCHER_CURRENT_CLASSES` and `SWITCHER_OTHER_CLASSES` in `components/portal/ApplicationSwitcher.tsx`.
+
+**Then, in order:**
+
+1. **The mission timeline (`MissionTimeline`).** Give it a rocket and space theme: a flight path joining the four stops, and a rocket at the current stop.
+2. **The countdown panel (`CountdownPanel`).** Make it a mission-control readout. Do not animate each tick, and keep the pause toggle easy to find.
+3. **The required asterisk and the country picker.**
+4. **The organizer pages.**
+5. **Signup checkboxes and onboarding badges.**
+6. **Voice** for the new `COPY.schedule`, `COPY.portal.switcherLabel`, and `ORGANIZER_COPY` values. Never write dates or times into copy; they come from the event config.
+
+**Environment.** Design work needs no Docker or Supabase:
+
+```bash
+npm install
+npm run dev
+```
+
+- `http://localhost:3000/dev/gallery` shows every applicant view and state. The switcher is at `?portal=both-hacker` and `?portal=both-judge`, the countdowns are at `#gallery-schedule`, the timeline has four schedule moments, and the country picker and asterisks are in `#gallery-fields`.
+- `http://localhost:3000/dev/gallery/organizer` shows every organizer state, chosen with `?dashboard=`, `?applications=`, and `?workspace=`.
+- `http://localhost:3000` is the landing page, with the live timeline and countdowns.
 
 **Hard rules:**
 
-- Edit only the write set in the handoff. Do not touch `app/**` pages and layouts, `lib/**`, `tests/**`, `e2e/**`, `supabase/**`, configs, or `package.json`. Add no dependencies.
-- Keep every prop, id, role, `aria-*`, `data-*`, and `data-testid`, and the elements listed in the frozen contract. The tests select on them.
-- Keep the contrast rules: navy text on coral, coral never as text, and no white text on coral, gold, or sky.
-- Decorative art stays `aria-hidden`. Nothing important may depend on animation. Autoplaying motion stops within 5 seconds.
+- Edit only the write set in the handoff. Do not touch `app/**` pages, layouts, containers, or galleries, `lib/**` (including `lib/event.ts`), `tests/**`, `e2e/**`, `supabase/**`, configs, or `package.json`. Add no dependencies.
+- Keep every prop, id, role, `aria-*`, `data-*`, and `data-testid`, and the elements listed in the frozen contract and in `organizer.md`. The tests select on them.
+- Keep the contrast rules: navy text on coral, coral never as text, no white text on coral, gold, or sky, and the red asterisk at 4.5:1 or better.
+- Decorative art stays `aria-hidden`. Nothing important may depend on animation. Autoplaying motion stops within 5 seconds, and the countdown digits never animate per tick.
 - If an idea needs anything outside your write set (a new prop, markup change, copy key, or logic), append it to `docs/frontend/astra-requests.md`, ship a fallback, and keep going.
 
 **Work efficiently; your usage is limited:**
 
-- Spend effort where the demo shows it: landing and brand art first, then liftoff and landing, then polish, then copy.
-- Use `npm run dev` and `http://localhost:3000/dev/gallery`, which shows every view and state with replayable motion. You don't need Docker or Supabase for design work.
-- Don't read `lib/`, `tests/`, `e2e/`, or `supabase/`. The handoff tells you everything the views need.
+- Spend effort where the demo shows it: the switcher first, then the timeline and countdowns, then the rest.
+- Don't read `lib/`, `tests/`, `e2e/`, or `supabase/`. The handoff and `organizer.md` tell you everything the views need.
 - Batch your edits, then verify once per batch with `npm run lint`, `npm run typecheck`, and `npm run test:unit`. Fix anything they report before moving on.
 
 **When you finish,** reply with:
