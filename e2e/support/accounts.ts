@@ -32,10 +32,13 @@ function createDataClient(): SupabaseClient<Database> {
   });
 }
 
-/** Creates an account through Supabase Auth with the publishable key, skipping the signup UI. */
+/**
+ * Creates an account through Supabase Auth with the publishable key, skipping the signup UI. `types` applies for
+ * several applications at once; `role` is the single-type shorthand.
+ */
 export async function createAccount(
   label: string,
-  options: { role?: PublicAccountRole; displayName?: string } = {},
+  options: { role?: PublicAccountRole; types?: readonly ApplicationType[]; displayName?: string } = {},
 ): Promise<E2EUser> {
   const client = createDataClient();
   const email = uniqueEmail(label);
@@ -45,6 +48,7 @@ export async function createAccount(
     password,
     options: {
       data: {
+        ...(options.types ? { application_types: options.types } : {}),
         ...(options.role ? { account_role: options.role } : {}),
         ...(options.displayName ? { display_name: options.displayName } : {}),
       },
@@ -105,9 +109,10 @@ export async function seedApplication(
   return data.id;
 }
 
-/** Looks up the applicant's own application id. */
-export async function findApplicationId(user: E2EUser): Promise<string> {
-  const { data, error } = await user.client.from("applications").select("id").eq("user_id", user.userId).single();
+/** Looks up the applicant's own application id; pass the type when the account holds both applications. */
+export async function findApplicationId(user: E2EUser, type?: ApplicationType): Promise<string> {
+  const mine = user.client.from("applications").select("id").eq("user_id", user.userId);
+  const { data, error } = await (type ? mine.eq("application_type", type) : mine).single();
   if (error) {
     throw new Error(`E2E application lookup failed: ${error.code} ${error.message}`);
   }

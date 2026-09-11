@@ -45,10 +45,12 @@ const DEADLINE_VIEW: TimestampView = { iso: DEADLINE, label: "Sep 30, 2026, 11:5
 const REFERENCE_NUMBER = 1042;
 const SUBMITTED_STATUSES = ["submitted", "in_review", "accepted", "waitlisted"] as const;
 
-/** A Hacker draft with About complete and Education started: 4 of 12 required answers. */
+/** A Hacker draft with About complete and Education started: 5 of 13 required answers. */
 const PARTIAL_HACKER = {
-  preferredName: "Maya",
-  location: "Oakland, CA",
+  fullName: "Maya",
+  birthdate: "2006-03-14",
+  countryOfResidence: "US",
+  cityOfResidence: "Oakland",
   bio: "Builder of small tools.",
   school: "Example University",
 };
@@ -105,8 +107,8 @@ function buildApplication(overrides: ApplicationOverrides = {}): ApplicantApplic
   } as ApplicantApplication;
 }
 
-function stepHref(step: string): string {
-  return `/portal/application?section=${step}`;
+function stepHref(step: string, type = "hacker"): string {
+  return `/portal/application?type=${type}&section=${step}`;
 }
 
 function readinessIds(
@@ -154,8 +156,8 @@ describe("toReadinessItems", () => {
         stateLabel: COPY.readiness.states.complete,
         isCurrent: false,
         ...unflagged,
-        progressText: COPY.readiness.progress(3, 3),
-        href: "/portal/application?section=about",
+        progressText: COPY.readiness.progress(4, 4),
+        href: "/portal/application?type=hacker&section=about",
       },
       {
         id: "education",
@@ -231,9 +233,9 @@ describe("toReadinessItems", () => {
   it("flags sections whose saved answers fail the submission schema", () => {
     const invalidLink = calculateApplicationCompletion("hacker", {
       ...PARTIAL_HACKER,
-      links: ["ftp://example.com/maya"],
+      githubUrl: "https://example.com/maya",
     });
-    expect(invalidLink.sections[0].invalidFields).toEqual(["links"]);
+    expect(invalidLink.sections[0].invalidFields).toEqual(["githubUrl"]);
 
     const items = toReadinessItems("hacker", invalidLink, {});
     expect(readinessIds(items, "needsAttention")).toEqual(["about"]);
@@ -290,7 +292,7 @@ describe("toSectionNavItems", () => {
       isActive: false,
       needsAttention: false,
       justCompleted: false,
-      href: "/portal/application?section=review",
+      href: "/portal/application?type=hacker&section=review",
     });
   });
 
@@ -349,28 +351,46 @@ describe("toAnswerSections", () => {
     }
   });
 
-  it("shows option labels, numbers as strings, link lists, and an accepted agreement", () => {
+  it("shows option labels, dates, numbers as strings, profile links, and an accepted agreement", () => {
     const answers = answersByKey(toAnswerSections("hacker", validHackerResponses, { editable: false }));
 
-    expect(answers.preferredName).toMatchObject({ value: "Test Hacker", missingText: null, errors: [] });
+    expect(answers.fullName).toMatchObject({ value: "Test Hacker", missingText: null, errors: [] });
+    expect(answers.birthdate.value).toBe("April 12, 2005");
+    expect(answers.countryOfResidence.value).toBe("United States");
+    expect(answers.cityOfResidence.value).toBe("Berkeley");
+    expect(answers.githubUrl.value).toBe("https://github.com/test-hacker");
     expect(answers.experienceLevel.value).toBe("Intermediate");
     expect(answers.skills.value).toEqual(["Web development", "AI / machine learning"]);
     expect(answers.graduationYear.value).toBe("2027");
     expect(answers.previousHackathonCount.value).toBe("2");
-    expect(answers.links.value).toEqual(["https://example.com/test-hacker"]);
     expect(answers.codeOfConductAccepted).toMatchObject({ value: COPY.review.agreementAccepted, missingText: null });
-    expect(Object.values(answers).filter((answer) => answer.value === null || answer.missingText !== null)).toEqual([]);
+    // Only the optional profile links the fixture leaves out are unanswered.
+    expect(
+      Object.values(answers)
+        .filter((answer) => answer.value === null)
+        .map((answer) => [answer.key, answer.missingText]),
+    ).toEqual([
+      ["linkedinUrl", COPY.review.notAnswered],
+      ["devpostUrl", COPY.review.notAnswered],
+    ]);
   });
 
-  it("shows judge choices and treats an empty link list and blank optional text as unanswered", () => {
+  it("shows judge choices and treats absent profile links and blank optional text as unanswered", () => {
     const answers = answersByKey(toAnswerSections("judge", validJudgeResponses, { editable: false }));
 
+    expect(answers.countryOfResidence.value).toBe("Canada");
+    expect(answers.linkedinUrl.value).toBe("https://www.linkedin.com/in/test-judge");
     expect(answers.expertiseAreas.value).toEqual(["Web", "Security"]);
     expect(answers.availability.value).toEqual(["Sunday morning"]);
     expect(answers.preferredCategories.value).toEqual(["Developer tools"]);
     expect(answers.yearsExperience.value).toBe("9");
-    expect(answers.links).toMatchObject({ value: null, missingText: COPY.review.notAnswered });
+    expect(answers.githubUrl).toMatchObject({ value: null, missingText: COPY.review.notAnswered });
     expect(answers.conflictsOfInterest).toMatchObject({ value: null, missingText: COPY.review.notAnswered });
+  });
+
+  it("shows a date that is not a real calendar date as stored", () => {
+    const answers = answersByKey(toAnswerSections("hacker", { birthdate: "someday" }, { editable: false }));
+    expect(answers.birthdate.value).toBe("someday");
   });
 
   it("shows stored values the config does not list as stored", () => {
@@ -391,9 +411,11 @@ describe("toAnswerSections", () => {
       toAnswerSections(
         "hacker",
         {
-          preferredName: "   ",
+          fullName: "   ",
+          birthdate: "",
+          countryOfResidence: "",
           bio: "",
-          links: ["", "   "],
+          githubUrl: "  ",
           skills: [],
           experienceLevel: "",
           graduationYear: Number.NaN,
@@ -402,8 +424,9 @@ describe("toAnswerSections", () => {
       ),
     );
     const requiredKeys = [
-      "preferredName",
-      "bio",
+      "fullName",
+      "birthdate",
+      "countryOfResidence",
       "skills",
       "experienceLevel",
       "graduationYear",
@@ -413,7 +436,8 @@ describe("toAnswerSections", () => {
     for (const key of requiredKeys) {
       expect(answers[key], key).toMatchObject({ value: null, missingText: COPY.review.notAnsweredRequired });
     }
-    expect(answers.links).toMatchObject({ value: null, missingText: COPY.review.notAnswered });
+    expect(answers.bio).toMatchObject({ value: null, missingText: COPY.review.notAnswered });
+    expect(answers.githubUrl).toMatchObject({ value: null, missingText: COPY.review.notAnswered });
 
     const judge = answersByKey(toAnswerSections("judge", {}, { editable: false }));
     expect(judge.company).toMatchObject({ value: null, missingText: COPY.review.notAnswered });
@@ -434,41 +458,41 @@ describe("toAnswerSections", () => {
   it("attaches each field's own errors as a copy", () => {
     const fieldErrors = {
       bio: ["Use 600 characters or fewer."],
-      links: ["Enter a full link starting with http:// or https://.", "Add up to 5 links."],
+      githubUrl: ["Enter a GitHub profile link, like https://github.com/your-username", "Use 300 characters or fewer."],
       notAField: ["Ignored."],
     };
     const answers = answersByKey(toAnswerSections("hacker", validHackerResponses, { fieldErrors, editable: true }));
 
     expect(answers.bio.errors).toEqual(fieldErrors.bio);
     expect(answers.bio.errors).not.toBe(fieldErrors.bio);
-    expect(answers.links.errors).toEqual(fieldErrors.links);
+    expect(answers.githubUrl.errors).toEqual(fieldErrors.githubUrl);
     expect(
       Object.values(answers)
         .filter((answer) => answer.errors.length > 0)
         .map((answer) => answer.key),
-    ).toEqual(["bio", "links"]);
+    ).toEqual(["githubUrl", "bio"]);
 
     const withoutErrors = answersByKey(toAnswerSections("hacker", validHackerResponses, { editable: true }));
     expect(Object.values(withoutErrors).filter((answer) => answer.errors.length > 0)).toEqual([]);
   });
 
   it("shows a saved draft's submission errors beside its answers, including the agreement", () => {
-    // Saves as a draft but cannot be submitted: a non-http link, a missing required answer, and no agreement.
-    const responses: Record<string, unknown> = { ...validHackerResponses, links: ["ftp://example.com/maya"] };
+    // Cannot be submitted: a profile link to the wrong site, a missing required answer, and no agreement.
+    const responses: Record<string, unknown> = { ...validHackerResponses, githubUrl: "https://example.com/maya" };
     delete responses.proudProject;
     delete responses.codeOfConductAccepted;
     const { fieldErrors } = calculateApplicationCompletion("hacker", responses);
     expect(fieldErrors).toEqual({
-      links: [expect.any(String)],
+      githubUrl: [expect.any(String)],
       proudProject: [expect.any(String)],
       codeOfConductAccepted: [expect.any(String)],
     });
 
     const answers = answersByKey(toAnswerSections("hacker", responses, { fieldErrors, editable: true }));
-    expect(answers.links).toMatchObject({
-      value: ["ftp://example.com/maya"],
+    expect(answers.githubUrl).toMatchObject({
+      value: "https://example.com/maya",
       missingText: null,
-      errors: fieldErrors.links,
+      errors: fieldErrors.githubUrl,
     });
     expect(answers.proudProject).toMatchObject({
       value: null,
@@ -484,7 +508,7 @@ describe("toAnswerSections", () => {
       Object.values(answers)
         .filter((answer) => answer.errors.length > 0)
         .map((answer) => answer.key),
-    ).toEqual(["links", "proudProject", "codeOfConductAccepted"]);
+    ).toEqual(["githubUrl", "proudProject", "codeOfConductAccepted"]);
   });
 
   it("adds edit links only while the application is editable", () => {
@@ -495,7 +519,7 @@ describe("toAnswerSections", () => {
         stepHref(section.id),
       ]),
     );
-    expect(editable[0]).toMatchObject({ id: "about", editHref: "/portal/application?section=about" });
+    expect(editable[0]).toMatchObject({ id: "about", editHref: "/portal/application?type=hacker&section=about" });
 
     const readOnly = toAnswerSections("hacker", validHackerResponses, { editable: false });
     expect(readOnly.map((section) => [section.editLabel, section.editHref])).toEqual(
@@ -664,21 +688,27 @@ describe("toMissionView", () => {
 describe("toPortalView", () => {
   const viewer = { displayName: "Ada Builder" };
 
+  /** Input for an applicant who holds only this application. */
+  function single(application: ApplicantApplication, deadline: string | null = null): PortalViewInput {
+    return { viewer, application, applicationTypes: [application.type], deadline };
+  }
+
   it("invites an unsaved, empty draft to start at the first section", () => {
     const application = buildApplication({ updatedAt: CREATED_AT });
-    expect(toPortalView({ viewer, application, deadline: null })).toEqual({
+    expect(toPortalView(single(application))).toEqual({
       kind: "draft",
       welcome: {
         greeting: COPY.portal.greeting("Ada Builder"),
         typeLabel: APPLICATION_TYPE_LABELS.hacker,
         reference: COPY.portal.reference("H-1042"),
+        switcher: null,
       },
       progress: {
         percent: 0,
         valueText: COPY.portal.progressValue(0),
-        nextStep: { label: "About you", href: "/portal/application?section=about" },
+        nextStep: { label: "About you", href: "/portal/application?type=hacker&section=about" },
         lastSaved: null,
-        cta: { label: COPY.portal.startCta, href: "/portal/application?section=about" },
+        cta: { label: COPY.portal.startCta, href: "/portal/application?type=hacker&section=about" },
       },
       deadline: null,
       readiness: toReadinessItems("hacker", application.completion, {}),
@@ -686,10 +716,10 @@ describe("toPortalView", () => {
   });
 
   it("continues a partial draft at the next incomplete section, with the last saved time", () => {
-    const view = draftView({ viewer, application: buildApplication({ responses: PARTIAL_HACKER }), deadline: null });
+    const view = draftView(single(buildApplication({ responses: PARTIAL_HACKER })));
     expect(view.progress).toEqual({
-      percent: 33,
-      valueText: COPY.portal.progressValue(33),
+      percent: 38,
+      valueText: COPY.portal.progressValue(38),
       nextStep: { label: "Education", href: stepHref("education") },
       lastSaved: UPDATED,
       cta: { label: COPY.portal.continueCta, href: stepHref("education") },
@@ -699,11 +729,7 @@ describe("toPortalView", () => {
 
   it("offers the start call to action only when nothing is complete and nothing was saved", () => {
     // Saved with only an optional answer: still 0 percent, but no longer a fresh start.
-    const optionalOnly = draftView({
-      viewer,
-      application: buildApplication({ responses: { links: ["https://example.com/maya"] } }),
-      deadline: null,
-    });
+    const optionalOnly = draftView(single(buildApplication({ responses: { githubUrl: "https://github.com/maya" } })));
     expect(optionalOnly.progress).toMatchObject({
       percent: 0,
       lastSaved: UPDATED,
@@ -711,31 +737,24 @@ describe("toPortalView", () => {
     });
 
     // Timestamps still equal: no last saved time, but answered progress is not a fresh start either.
-    const unsaved = draftView({
-      viewer,
-      application: buildApplication({ responses: PARTIAL_HACKER, updatedAt: CREATED_AT }),
-      deadline: null,
-    });
-    expect(unsaved.progress).toMatchObject({ percent: 33, lastSaved: null, cta: { label: COPY.portal.continueCta } });
+    const unsaved = draftView(single(buildApplication({ responses: PARTIAL_HACKER, updatedAt: CREATED_AT })));
+    expect(unsaved.progress).toMatchObject({ percent: 38, lastSaved: null, cta: { label: COPY.portal.continueCta } });
   });
 
   it("sends a submittable draft to review", () => {
-    const view = draftView({
-      viewer,
-      application: buildApplication({ type: "judge", responses: validJudgeResponses }),
-      deadline: null,
-    });
+    const view = draftView(single(buildApplication({ type: "judge", responses: validJudgeResponses })));
     expect(view.welcome).toEqual({
       greeting: COPY.portal.greeting("Ada Builder"),
       typeLabel: APPLICATION_TYPE_LABELS.judge,
       reference: COPY.portal.reference("J-1042"),
+      switcher: null,
     });
     expect(view.progress).toEqual({
       percent: 100,
       valueText: COPY.portal.progressValue(100),
-      nextStep: { label: COPY.editor.reviewStep, href: "/portal/application?section=review" },
+      nextStep: { label: COPY.editor.reviewStep, href: stepHref("review", "judge") },
       lastSaved: UPDATED,
-      cta: { label: COPY.portal.reviewCta, href: "/portal/application?section=review" },
+      cta: { label: COPY.portal.reviewCta, href: stepHref("review", "judge") },
     });
     expect(readinessIds(view.readiness, "isCurrent")).toEqual([]);
   });
@@ -748,49 +767,78 @@ describe("toPortalView", () => {
     } as ApplicantApplication;
     expect(application.completion.nextIncompleteSectionId).toBeNull();
 
-    expect(draftView({ viewer, application, deadline: null }).progress).toMatchObject({
+    expect(draftView(single(application)).progress).toMatchObject({
       nextStep: { label: COPY.editor.reviewStep, href: stepHref("review") },
       cta: { label: COPY.portal.continueCta, href: stepHref("review") },
     });
   });
 
   it.each([
-    ["the display name first", "Ada Builder", { preferredName: "Maya" }, "Ada Builder"],
-    ["a trimmed preferred name", null, { preferredName: "  Maya  " }, "Maya"],
-    ["the preferred name when the display name is blank", "   ", { preferredName: "Maya" }, "Maya"],
-    ["no name when the preferred name is blank", null, { preferredName: "   " }, null],
+    ["the display name first", "Ada Builder", { fullName: "Maya" }, "Ada Builder"],
+    ["a trimmed full name", null, { fullName: "  Maya  " }, "Maya"],
+    ["the full name when the display name is blank", "   ", { fullName: "Maya" }, "Maya"],
+    ["no name when the full name is blank", null, { fullName: "   " }, null],
     ["no name when neither exists", null, {}, null],
   ] as const)("greets with %s", (_case, displayName, responses, name) => {
     const application = buildApplication({ responses });
-    const view = toPortalView({ viewer: { displayName }, application, deadline: null });
+    const view = toPortalView({ ...single(application), viewer: { displayName } });
     expect(view.welcome.greeting).toBe(COPY.portal.greeting(name));
   });
 
   it("formats a set deadline in both variants and keeps it null while to be announced", () => {
     const submitted = buildApplication({ status: "submitted", responses: validHackerResponses });
-    expect(toPortalView({ viewer, application: buildApplication(), deadline: DEADLINE }).deadline).toEqual(
-      DEADLINE_VIEW,
-    );
-    expect(toPortalView({ viewer, application: submitted, deadline: DEADLINE }).deadline).toEqual(DEADLINE_VIEW);
-    expect(toPortalView({ viewer, application: buildApplication(), deadline: null }).deadline).toBeNull();
-    expect(toPortalView({ viewer, application: submitted, deadline: null }).deadline).toBeNull();
+    expect(toPortalView(single(buildApplication(), DEADLINE)).deadline).toEqual(DEADLINE_VIEW);
+    expect(toPortalView(single(submitted, DEADLINE)).deadline).toEqual(DEADLINE_VIEW);
+    expect(toPortalView(single(buildApplication())).deadline).toBeNull();
+    expect(toPortalView(single(submitted)).deadline).toBeNull();
   });
 
   it.each(SUBMITTED_STATUSES)("shows a %s application's status, launch time, and links", (status) => {
     const application = buildApplication({ status, responses: validHackerResponses });
-    expect(toPortalView({ viewer: { displayName: null }, application, deadline: null })).toEqual({
+    expect(toPortalView({ ...single(application), viewer: { displayName: null } })).toEqual({
       kind: "submitted",
       welcome: {
         greeting: COPY.portal.greeting("Test Hacker"),
         typeLabel: APPLICATION_TYPE_LABELS.hacker,
         reference: COPY.portal.reference("H-1042"),
+        switcher: null,
       },
       status,
       statusLabel: APPLICATION_STATUS_LABELS[status],
       launched: LAUNCHED,
       deadline: null,
-      trackHref: "/portal/mission",
-      viewHref: "/portal/application",
+      trackHref: "/portal/mission?type=hacker",
+      viewHref: "/portal/application?type=hacker",
     });
+  });
+
+  it("switches between the Hacker and Judge dashboards when the applicant holds both", () => {
+    const judge = buildApplication({ type: "judge", responses: validJudgeResponses });
+    const switcher = (current: "hacker" | "judge") => ({
+      label: COPY.portal.switcherLabel,
+      items: [
+        {
+          type: "hacker",
+          label: APPLICATION_TYPE_LABELS.hacker,
+          href: "/portal?type=hacker",
+          isCurrent: current === "hacker",
+        },
+        { type: "judge", label: APPLICATION_TYPE_LABELS.judge, href: "/portal?type=judge", isCurrent: current === "judge" },
+      ],
+    });
+    const welcome = (application: ApplicantApplication, applicationTypes: readonly ApplicationType[]) =>
+      toPortalView({ viewer, application, applicationTypes, deadline: null }).welcome;
+
+    expect(welcome(judge, ["hacker", "judge"])).toMatchObject({
+      typeLabel: APPLICATION_TYPE_LABELS.judge,
+      reference: COPY.portal.reference("J-1042"),
+      switcher: switcher("judge"),
+    });
+    // Form order and one entry per type, whatever the input order.
+    expect(welcome(buildApplication(), ["judge", "hacker", "judge"]).switcher).toEqual(switcher("hacker"));
+    // The dashboard's own application always counts.
+    expect(welcome(judge, ["hacker"]).switcher).toEqual(switcher("judge"));
+    expect(welcome(judge, []).switcher).toBeNull();
+    expect(welcome(judge, ["judge"]).switcher).toBeNull();
   });
 });

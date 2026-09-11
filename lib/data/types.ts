@@ -54,9 +54,15 @@ export interface ApplicantIdentity {
   applicationId: string;
   displayName: string | null;
   email: string;
-  preferredName: string | null;
+  fullName: string | null;
+  /** YYYY-MM-DD. */
+  birthdate: string | null;
+  /** ISO 3166-1 alpha-2 code; COUNTRY_OPTIONS in lib/application-config.ts has the display name. */
+  countryOfResidence: string | null;
+  cityOfResidence: string | null;
   /** School for Hackers, company/organization for Judges. */
   affiliation: string | null;
+  /** LinkedIn, GitHub, and Devpost profile links that pass validation, in form order. */
   links: string[];
 }
 

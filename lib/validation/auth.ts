@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PUBLIC_ACCOUNT_ROLES } from "@/lib/domain/enums";
+import { APPLICATION_TYPES } from "@/lib/domain/enums";
 
 // Matches supabase/config.toml [auth] minimum_password_length. bcrypt ignores bytes past 72.
 export const PASSWORD_MIN_LENGTH = 8;
@@ -20,14 +20,36 @@ const displayNameSchema = z
   .min(1, { error: "Enter a display name." })
   .max(DISPLAY_NAME_MAX_LENGTH, { error: `Use ${DISPLAY_NAME_MAX_LENGTH} characters or fewer.` });
 
+const APPLICATION_TYPES_MESSAGE = "Choose Hacker, Judge, or both.";
+
+// Checked as a whole list, so every problem is reported on `applicationTypes` itself rather than on one list item.
+const applicationTypesSchema = z.preprocess(
+  // One checked checkbox arrives from FormData as a string rather than an array.
+  (value) => (typeof value === "string" ? [value] : value),
+  z
+    .array(z.unknown(), { error: APPLICATION_TYPES_MESSAGE })
+    .refine(
+      (values) =>
+        values.length >= 1 &&
+        values.length <= APPLICATION_TYPES.length &&
+        new Set(values).size === values.length &&
+        values.every((value) => APPLICATION_TYPES.some((type) => type === value)),
+      { error: APPLICATION_TYPES_MESSAGE },
+    )
+    .transform((values) => APPLICATION_TYPES.filter((type) => values.includes(type))),
+);
+
 export const signUpSchema = z.object({
   email: emailSchema,
   password: z
     .string({ error: "Enter a password." })
     .min(PASSWORD_MIN_LENGTH, { error: `Use at least ${PASSWORD_MIN_LENGTH} characters.` })
     .max(PASSWORD_MAX_LENGTH, { error: `Use ${PASSWORD_MAX_LENGTH} characters or fewer.` }),
-  /** Only hacker or judge. Organizer can never be requested by a public signup. */
-  accountRole: z.enum(PUBLIC_ACCOUNT_ROLES, { error: "Choose Hacker or Judge." }),
+  /**
+   * Hacker, Judge, or both, from one or two checkboxes, returned in form order. Organizer can never be requested by a
+   * public signup.
+   */
+  applicationTypes: applicationTypesSchema,
   /** Optional at signup; can be set later with updateProfile. Blank is treated as absent. */
   displayName: z.preprocess(
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),

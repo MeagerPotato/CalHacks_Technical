@@ -93,6 +93,18 @@ function OptionalText({ text }: { text?: string | null }) {
   return text ? <span className="font-normal">{` ${text}`}</span> : null;
 }
 
+/**
+ * The visible required marker after a label or legend. It is hidden from assistive technology: a required control
+ * announces itself through `aria-required`, and a required group adds visually hidden text instead.
+ */
+function RequiredMarker() {
+  return (
+    <span data-required-marker="" aria-hidden="true" className="ml-1 inline-block font-display text-lg font-black leading-none text-required">
+      *
+    </span>
+  );
+}
+
 export interface FieldProps {
   /** Control id, for example `field-<key>`. */
   id: string;
@@ -126,6 +138,7 @@ export function Field({
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="font-semibold">
         {label}
+        {required ? <RequiredMarker /> : null}
         <OptionalText text={optionalText} />
       </label>
       {ids.hintId ? <FieldText id={ids.hintId}>{hint}</FieldText> : null}
@@ -145,19 +158,37 @@ export interface FieldGroupProps {
   help?: string | null;
   /** Only the first non-empty message is shown. */
   errors?: readonly string[];
+  /** Shows the required marker, plus visually hidden `COPY.common.required` text for the legend. */
+  required?: boolean;
   optionalText?: string | null;
   counter?: FieldCounter | null;
   children: ReactNode;
 }
 
 /** A `fieldset` with a `legend` for radio groups, checkbox groups, and agreements. */
-export function FieldGroup({ id, legend, hint, help, errors, optionalText, counter, children }: FieldGroupProps) {
+export function FieldGroup({
+  id,
+  legend,
+  hint,
+  help,
+  errors,
+  required = false,
+  optionalText,
+  counter,
+  children,
+}: FieldGroupProps) {
   const ids = describe({ id, hint, help, errors, counter });
 
   return (
     <fieldset aria-describedby={ids.describedBy} className="min-w-0">
       <legend className="mb-2 font-semibold">
         {legend}
+        {required ? (
+          <>
+            <RequiredMarker />
+            <VisuallyHidden>{` ${COPY.common.required}`}</VisuallyHidden>
+          </>
+        ) : null}
         <OptionalText text={optionalText} />
       </legend>
       <div className="flex flex-col gap-2">

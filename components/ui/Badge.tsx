@@ -8,13 +8,13 @@ export type BadgeTone = "neutral" | "info" | "highlight" | "success";
 /** Badge fills with their paired text colors. White text appears only on evergreen. */
 export const BADGE_TONE_CLASSES = {
   neutral: "bg-surface text-ink",
-  info: "bg-accent text-ink",
+  info: "bg-accent text-ink shadow-[0_2px_0_rgb(20_35_59/0.12)]",
   highlight: "bg-highlight text-ink",
   success: "bg-success text-on-success",
 } as const satisfies Record<BadgeTone, string>;
 
 const BADGE_BASE_CLASSES =
-  "inline-flex items-center gap-1.5 rounded-full border-2 border-border px-2.5 py-0.5 text-sm font-semibold";
+  "inline-flex items-center gap-1.5 rounded-full border-2 border-border px-2.5 py-0.5 text-sm font-bold";
 
 export interface BadgeProps {
   tone: BadgeTone;

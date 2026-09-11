@@ -10,11 +10,11 @@ describe("calculateApplicationCompletion", () => {
 
     expect(completion.percent).toBe(0);
     expect(completion.isSubmittable).toBe(false);
-    expect(completion.requiredFieldCount).toBe(12);
+    expect(completion.requiredFieldCount).toBe(13);
     expect(completion.completedRequiredFieldCount).toBe(0);
     expect(completion.sections.every((section) => section.status === "not_started")).toBe(true);
     expect(completion.nextIncompleteSectionId).toBe("about");
-    expect(completion.missingRequiredFields).toHaveLength(12);
+    expect(completion.missingRequiredFields).toHaveLength(13);
   });
 
   it("reaches 100 only for a submittable application", () => {
@@ -33,13 +33,14 @@ describe("calculateApplicationCompletion", () => {
 
   it("computes the percentage from valid required answers", () => {
     const completion = calculateApplicationCompletion("hacker", {
-      preferredName: "Maya",
-      location: "Oakland, CA",
-      bio: "Builder",
+      fullName: "Maya",
+      birthdate: "2006-03-14",
+      countryOfResidence: "US",
+      cityOfResidence: "Oakland",
     });
 
-    expect(completion.completedRequiredFieldCount).toBe(3);
-    expect(completion.percent).toBe(25);
+    expect(completion.completedRequiredFieldCount).toBe(4);
+    expect(completion.percent).toBe(31);
     expect(completion.sections[0]).toMatchObject({ id: "about", status: "complete" });
     expect(completion.nextIncompleteSectionId).toBe("education");
   });
@@ -66,14 +67,14 @@ describe("calculateApplicationCompletion", () => {
   });
 
   it("never reports 100 when an optional answer is invalid", () => {
-    const completion = calculateApplicationCompletion("hacker", { ...validHackerResponses, links: ["not-a-url"] });
+    const completion = calculateApplicationCompletion("hacker", { ...validHackerResponses, githubUrl: "not-a-url" });
 
-    expect(completion.completedRequiredFieldCount).toBe(12);
+    expect(completion.completedRequiredFieldCount).toBe(13);
     expect(completion.percent).toBe(99);
     expect(completion.isSubmittable).toBe(false);
     expect(completion.sections.find((section) => section.id === "about")).toMatchObject({
       status: "in_progress",
-      invalidFields: ["links"],
+      invalidFields: ["githubUrl"],
     });
   });
 

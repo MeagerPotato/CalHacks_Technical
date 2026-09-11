@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { COUNTRIES } from "@/lib/countries";
 import type { ApplicationType } from "@/lib/domain/enums";
 
 // =============================================================================
@@ -9,8 +10,8 @@ import type { ApplicationType } from "@/lib/domain/enums";
 //   submitApplication and mirrored by the database function
 //   private.application_responses_valid (tests/integration/schema-drift.test.ts).
 // - Draft schemas accept partial answers but still enforce types, option values,
-//   and size limits. The same database function checks drafts, so malformed data
-//   cannot be stored even through direct Data API writes.
+//   size limits, real dates, and profile link formats. The same database function checks
+//   drafts, so malformed data cannot be stored even through direct Data API writes.
 // - APPLICATION_SECTIONS groups fields for completion and Launch Readiness.
 // Field labels and option labels live in lib/application-config.ts.
 // =============================================================================
@@ -78,14 +79,15 @@ export const PROJECT_CATEGORIES = [
 ] as const;
 export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];
 
+/** ISO 3166-1 alpha-2 codes for countryOfResidence, in lib/countries.ts order (United States first). */
+export const COUNTRY_CODES = COUNTRIES.map((country) => country.code) as [string, ...string[]];
+
 export const APPLICATION_LIMITS = {
-  preferredName: 80,
   shortText: 120,
   bio: 600,
   mediumAnswer: 1000,
   longAnswer: 1500,
   url: 300,
-  links: 5,
   skills: 8,
   expertiseAreas: 6,
   availability: JUDGE_AVAILABILITY_BLOCKS.length,
@@ -93,14 +95,25 @@ export const APPLICATION_LIMITS = {
   graduationYear: { min: 2000, max: 2040 },
   previousHackathonCount: { min: 0, max: 100 },
   yearsExperience: { min: 0, max: 60 },
+  /** Inclusive YYYY-MM-DD bounds. The latest birthdate is the application deadline's date (lib/event.ts). */
+  birthdate: { min: "1900-01-01", max: "2026-09-20" },
 } as const;
 
 /**
- * Submitted links must be http(s) URLs with a domain name and an optional port. The database
- * uses the identical pattern (private.http_link_pattern), so both accept exactly the same links.
+ * Profile links must point to a profile on their own site: a LinkedIn `/in/` page, a GitHub username, or a Devpost
+ * username. The database uses identical patterns (private.profile_link_pattern), so both accept exactly the same
+ * links. They avoid flags and shorthand classes so JavaScript and Postgres read them the same way.
  */
-export const HTTP_LINK_PATTERN_SOURCE = String.raw`^https?://(?=[A-Za-z0-9.-]{1,253}(?:[:/?#]|$))(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^\x01-\x20\x7f]*)?$`;
-export const HTTP_LINK_PATTERN = new RegExp(HTTP_LINK_PATTERN_SOURCE);
+export const PROFILE_LINK_PATTERN_SOURCES = {
+  linkedinUrl: String.raw`^https?://(?:[a-z]{2}\.|www\.)?linkedin\.com/in/[A-Za-z0-9_%-]{3,100}/?$`,
+  githubUrl: String.raw`^https?://(?:www\.)?github\.com/[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}/?$`,
+  devpostUrl: String.raw`^https?://(?:www\.)?devpost\.com/[A-Za-z0-9_-]{1,60}/?$`,
+} as const;
+
+export type ProfileLinkKey = keyof typeof PROFILE_LINK_PATTERN_SOURCES;
+
+/** Profile link fields in form order. */
+export const PROFILE_LINK_KEYS = ["linkedinUrl", "githubUrl", "devpostUrl"] as const satisfies readonly ProfileLinkKey[];
 
 // ---------------------------------------------------------------------------
 // Field builders
@@ -146,22 +159,53 @@ const multiChoice = <const T extends readonly [string, ...string[]]>(values: T, 
     .max(maxItems, { error: `Choose up to ${maxItems} options.` })
     .refine(hasNoDuplicates, { error: DUPLICATE_MESSAGE });
 
-const LINK_MESSAGE = "Enter a full link starting with http:// or https://.";
+const COUNTRY_MESSAGE = "Choose a country from the list.";
 
-const httpLink = z
-  .string({ error: LINK_MESSAGE })
-  .max(APPLICATION_LIMITS.url, { error: tooLong(APPLICATION_LIMITS.url) })
-  .regex(HTTP_LINK_PATTERN, { error: LINK_MESSAGE });
+const ISO_DATE_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 
-/** True for a link that passes submission validation (draft links can be any text). */
-export function isHttpLink(value: unknown): value is string {
-  return httpLink.safeParse(value).success;
+/** True for a YYYY-MM-DD string that names a real calendar date. */
+export function isCalendarDate(value: unknown): value is string {
+  if (typeof value !== "string" || !ISO_DATE_PATTERN.test(value)) {
+    return false;
+  }
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  const date = new Date(Date.UTC(year, month - 1, day));
+  // Date.UTC maps years 0-99 to 1900-1999 and rolls invalid days over, so any mismatch means the date is not real.
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
-const linkList = z
-  .array(httpLink, { error: "Links must be a list." })
-  .max(APPLICATION_LIMITS.links, { error: `Add up to ${APPLICATION_LIMITS.links} links.` })
-  .optional();
+const LONG_UTC_DATE = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", dateStyle: "long" });
+
+const BIRTHDATE_MESSAGE = `Enter a real date from ${LONG_UTC_DATE.format(
+  new Date(`${APPLICATION_LIMITS.birthdate.min}T00:00:00Z`),
+)} to ${LONG_UTC_DATE.format(new Date(`${APPLICATION_LIMITS.birthdate.max}T00:00:00Z`))}.`;
+
+const birthdate = z
+  .string({ error: requiredOr(BIRTHDATE_MESSAGE) })
+  .refine(
+    (value) =>
+      isCalendarDate(value) && value >= APPLICATION_LIMITS.birthdate.min && value <= APPLICATION_LIMITS.birthdate.max,
+    { error: BIRTHDATE_MESSAGE },
+  );
+
+const PROFILE_LINK_MESSAGES: Record<ProfileLinkKey, string> = {
+  linkedinUrl: "Enter a LinkedIn profile link, like https://www.linkedin.com/in/your-name",
+  githubUrl: "Enter a GitHub profile link, like https://github.com/your-username",
+  devpostUrl: "Enter a Devpost profile link, like https://devpost.com/your-username",
+};
+
+const profileLink = (key: ProfileLinkKey) =>
+  z
+    .string({ error: PROFILE_LINK_MESSAGES[key] })
+    .max(APPLICATION_LIMITS.url, { error: tooLong(APPLICATION_LIMITS.url) })
+    .regex(new RegExp(PROFILE_LINK_PATTERN_SOURCES[key]), { error: PROFILE_LINK_MESSAGES[key] });
+
+/** True for a link that passes validation for the given profile link field. */
+export function isProfileLink(key: ProfileLinkKey, value: unknown): value is string {
+  return profileLink(key).safeParse(value).success;
+}
 
 const codeOfConductAgreement = z.literal(true, {
   error: "Accept the code of conduct to submit.",
@@ -189,25 +233,40 @@ const draftMultiChoice = <const T extends readonly [string, ...string[]]>(values
     .refine(hasNoDuplicates, { error: DUPLICATE_MESSAGE })
     .nullish();
 
-const draftLinkList = z
-  .array(
-    z.string({ error: "Enter a link." }).trim().max(APPLICATION_LIMITS.url, { error: tooLong(APPLICATION_LIMITS.url) }),
-    { error: "Links must be a list." },
-  )
-  .max(APPLICATION_LIMITS.links, { error: `Add up to ${APPLICATION_LIMITS.links} links.` })
-  .nullish();
-
 const draftAgreement = z.boolean({ error: "Choose yes or no." }).nullish();
+
+// ---------------------------------------------------------------------------
+// About you (shared by both application types, in form order)
+// ---------------------------------------------------------------------------
+
+const aboutYouFields = {
+  fullName: requiredText(APPLICATION_LIMITS.shortText),
+  birthdate,
+  countryOfResidence: z.enum(COUNTRY_CODES, { error: requiredOr(COUNTRY_MESSAGE) }),
+  cityOfResidence: requiredText(APPLICATION_LIMITS.shortText),
+  linkedinUrl: profileLink("linkedinUrl").optional(),
+  githubUrl: profileLink("githubUrl").optional(),
+  devpostUrl: profileLink("devpostUrl").optional(),
+  bio: optionalText(APPLICATION_LIMITS.bio),
+};
+
+const aboutYouDraftFields = {
+  fullName: draftText(APPLICATION_LIMITS.shortText),
+  birthdate: birthdate.nullish(),
+  countryOfResidence: z.enum(COUNTRY_CODES, { error: COUNTRY_MESSAGE }).nullish(),
+  cityOfResidence: draftText(APPLICATION_LIMITS.shortText),
+  linkedinUrl: profileLink("linkedinUrl").nullish(),
+  githubUrl: profileLink("githubUrl").nullish(),
+  devpostUrl: profileLink("devpostUrl").nullish(),
+  bio: draftText(APPLICATION_LIMITS.bio),
+};
 
 // ---------------------------------------------------------------------------
 // Submission schemas
 // ---------------------------------------------------------------------------
 
 export const hackerApplicationSchema = z.object({
-  preferredName: requiredText(APPLICATION_LIMITS.preferredName),
-  location: requiredText(APPLICATION_LIMITS.shortText),
-  bio: requiredText(APPLICATION_LIMITS.bio),
-  links: linkList,
+  ...aboutYouFields,
   school: requiredText(APPLICATION_LIMITS.shortText),
   major: requiredText(APPLICATION_LIMITS.shortText),
   graduationYear: wholeNumber(APPLICATION_LIMITS.graduationYear.min, APPLICATION_LIMITS.graduationYear.max),
@@ -223,10 +282,7 @@ export const hackerApplicationSchema = z.object({
 });
 
 export const judgeApplicationSchema = z.object({
-  preferredName: requiredText(APPLICATION_LIMITS.preferredName),
-  location: requiredText(APPLICATION_LIMITS.shortText),
-  bio: requiredText(APPLICATION_LIMITS.bio),
-  links: linkList,
+  ...aboutYouFields,
   company: optionalText(APPLICATION_LIMITS.shortText),
   roleTitle: requiredText(APPLICATION_LIMITS.shortText),
   yearsExperience: wholeNumber(APPLICATION_LIMITS.yearsExperience.min, APPLICATION_LIMITS.yearsExperience.max),
@@ -245,10 +301,7 @@ export const judgeApplicationSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const hackerApplicationDraftSchema = z.object({
-  preferredName: draftText(APPLICATION_LIMITS.preferredName),
-  location: draftText(APPLICATION_LIMITS.shortText),
-  bio: draftText(APPLICATION_LIMITS.bio),
-  links: draftLinkList,
+  ...aboutYouDraftFields,
   school: draftText(APPLICATION_LIMITS.shortText),
   major: draftText(APPLICATION_LIMITS.shortText),
   graduationYear: draftWholeNumber(APPLICATION_LIMITS.graduationYear.min, APPLICATION_LIMITS.graduationYear.max),
@@ -264,10 +317,7 @@ export const hackerApplicationDraftSchema = z.object({
 });
 
 export const judgeApplicationDraftSchema = z.object({
-  preferredName: draftText(APPLICATION_LIMITS.preferredName),
-  location: draftText(APPLICATION_LIMITS.shortText),
-  bio: draftText(APPLICATION_LIMITS.bio),
-  links: draftLinkList,
+  ...aboutYouDraftFields,
   company: draftText(APPLICATION_LIMITS.shortText),
   roleTitle: draftText(APPLICATION_LIMITS.shortText),
   yearsExperience: draftWholeNumber(APPLICATION_LIMITS.yearsExperience.min, APPLICATION_LIMITS.yearsExperience.max),
@@ -329,16 +379,30 @@ export interface ApplicationSectionDefinition<K extends string = string> {
   readonly fields: readonly K[];
 }
 
+const ABOUT_YOU_SECTION = {
+  id: "about",
+  fields: [
+    "fullName",
+    "birthdate",
+    "countryOfResidence",
+    "cityOfResidence",
+    "linkedinUrl",
+    "githubUrl",
+    "devpostUrl",
+    "bio",
+  ],
+} as const;
+
 export const APPLICATION_SECTIONS = {
   hacker: [
-    { id: "about", fields: ["preferredName", "location", "bio", "links"] },
+    ABOUT_YOU_SECTION,
     { id: "education", fields: ["school", "major", "graduationYear"] },
     { id: "experience", fields: ["experienceLevel", "skills", "previousHackathonCount"] },
     { id: "short_answers", fields: ["buildGoals", "proudProject"] },
     { id: "agreements", fields: ["codeOfConductAccepted"] },
   ],
   judge: [
-    { id: "about", fields: ["preferredName", "location", "bio", "links"] },
+    ABOUT_YOU_SECTION,
     { id: "professional", fields: ["company", "roleTitle", "yearsExperience", "expertiseAreas"] },
     { id: "judging", fields: ["judgingExperience", "availability", "preferredCategories", "conflictsOfInterest"] },
     { id: "short_answers", fields: ["evaluationApproach", "motivation"] },

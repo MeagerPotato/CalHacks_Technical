@@ -39,7 +39,7 @@ test("a failed save can be retried, repeats its notice title, and returns focus 
   await signInViaUi(page, user, "/portal/application?section=about");
 
   const restore = await dropServerActions(page);
-  await page.getByLabel(fieldLabel("hacker", "preferredName")).fill("Offline Ada");
+  await page.getByLabel(fieldLabel("hacker", "fullName")).fill("Offline Ada");
   await page.getByRole("button", { name: LOCKED.editor.saveDraft }).click();
 
   const notice = page.getByTestId("notice-network");
@@ -81,7 +81,7 @@ test("a retry that fails another way moves focus to the new notice's action", as
   await signInViaUi(page, user, "/portal/application?section=about");
 
   const restore = await dropServerActions(page);
-  await page.getByLabel(fieldLabel("hacker", "preferredName")).fill("Offline Ada");
+  await page.getByLabel(fieldLabel("hacker", "fullName")).fill("Offline Ada");
   await page.getByRole("button", { name: LOCKED.editor.saveDraft }).click();
   const tryAgain = page.getByTestId("notice-network").getByRole("button", { name: COPY.notices.actions.retry });
   await expect(tryAgain).toBeVisible();
@@ -119,7 +119,7 @@ test("Check status keeps focus in the editor, and Try again after a failed secti
   restore = await dropServerActions(page);
   const nav = page.getByTestId("section-nav");
   await nav.getByRole("link", { name: getSectionLabel("hacker", "about") }).click();
-  await page.getByLabel(fieldLabel("hacker", "preferredName")).fill("Renamed Ada");
+  await page.getByLabel(fieldLabel("hacker", "fullName")).fill("Renamed Ada");
   await nav.getByRole("link", { name: getSectionLabel("hacker", "education") }).click();
   const network = page.getByTestId("notice-network");
   await expect(network).toBeVisible();

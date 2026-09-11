@@ -8,7 +8,7 @@ import { GuardedLink } from "@/lib/client/navigation-guard";
 export type AppLinkVariant = "inline" | "primary" | "secondary" | "quiet" | "plain";
 
 const BUTTON_LIKE_CLASSES =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-control border-2 px-4 py-2 font-semibold no-underline";
+  "inline-flex min-h-11 items-center justify-center gap-2 pressable rounded-control border-2 px-4 py-2 font-semibold no-underline";
 
 /** Link styles. Astra may restyle them but must keep the keys and the contrast rules (navy text on coral). */
 export const LINK_VARIANT_CLASSES = {

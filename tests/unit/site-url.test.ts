@@ -44,8 +44,8 @@ function siteUrlError(env: SiteEnv): InvalidSiteUrlError {
 const VERCEL_PRODUCTION = {
   NODE_ENV: "production",
   VERCEL_ENV: "production",
-  VERCEL_PROJECT_PRODUCTION_URL: "launchpad.example.com",
-  VERCEL_URL: "launchpad-abc123-team.vercel.app",
+  VERCEL_PROJECT_PRODUCTION_URL: "mission-control.example.com",
+  VERCEL_URL: "mission-control-abc123-team.vercel.app",
 } satisfies SiteEnv;
 
 describe("getSiteUrl", () => {
@@ -54,11 +54,11 @@ describe("getSiteUrl", () => {
   });
 
   it.each([
-    ["https://launchpad.example.com", "https://launchpad.example.com"],
-    ["https://launchpad.example.com/", "https://launchpad.example.com"],
-    ["https://Launchpad.Example.com/apply/?ref=email#top", "https://launchpad.example.com"],
+    ["https://mission-control.example.com", "https://mission-control.example.com"],
+    ["https://mission-control.example.com/", "https://mission-control.example.com"],
+    ["https://Mission-Control.Example.com/apply/?ref=email#top", "https://mission-control.example.com"],
     ["  http://localhost:4000/  ", "http://localhost:4000"],
-    ["https://launchpad.example.com:443", "https://launchpad.example.com"],
+    ["https://mission-control.example.com:443", "https://mission-control.example.com"],
     ["http://127.0.0.1:3100", "http://127.0.0.1:3100"],
   ])("returns the origin of SITE_URL %j", (value, expected) => {
     stubSiteEnv({ NODE_ENV: "production", SITE_URL: value });
@@ -72,7 +72,7 @@ describe("getSiteUrl", () => {
 
   it("ignores a blank SITE_URL", () => {
     stubSiteEnv({ ...VERCEL_PRODUCTION, SITE_URL: "   " });
-    expect(getSiteUrl()).toBe("https://launchpad.example.com");
+    expect(getSiteUrl()).toBe("https://mission-control.example.com");
   });
 
   it.each([
@@ -93,12 +93,12 @@ describe("getSiteUrl", () => {
 
   it("uses the production hostname on Vercel production", () => {
     stubSiteEnv(VERCEL_PRODUCTION);
-    expect(getSiteUrl()).toBe("https://launchpad.example.com");
+    expect(getSiteUrl()).toBe("https://mission-control.example.com");
   });
 
   it("uses the deployment hostname on Vercel previews", () => {
-    stubSiteEnv({ ...VERCEL_PRODUCTION, VERCEL_ENV: "preview", VERCEL_URL: " launchpad-git-feature-team.vercel.app " });
-    expect(getSiteUrl()).toBe("https://launchpad-git-feature-team.vercel.app");
+    stubSiteEnv({ ...VERCEL_PRODUCTION, VERCEL_ENV: "preview", VERCEL_URL: " mission-control-git-feature-team.vercel.app " });
+    expect(getSiteUrl()).toBe("https://mission-control-git-feature-team.vercel.app");
   });
 
   it.each([
@@ -117,11 +117,11 @@ describe("getSiteUrl", () => {
   it.each([
     [
       "Vercel production without a production hostname",
-      { NODE_ENV: "production", VERCEL_ENV: "production", VERCEL_URL: "launchpad-abc123-team.vercel.app" },
+      { NODE_ENV: "production", VERCEL_ENV: "production", VERCEL_URL: "mission-control-abc123-team.vercel.app" },
     ],
     [
       "Vercel preview without a deployment hostname",
-      { NODE_ENV: "production", VERCEL_ENV: "preview", VERCEL_PROJECT_PRODUCTION_URL: "launchpad.example.com" },
+      { NODE_ENV: "production", VERCEL_ENV: "preview", VERCEL_PROJECT_PRODUCTION_URL: "mission-control.example.com" },
     ],
     ["a production build with nothing configured", { NODE_ENV: "production" }],
     [
@@ -145,7 +145,7 @@ describe("getSiteUrl", () => {
 });
 
 describe("signUp confirmation redirect", () => {
-  const input = { email: "maya@example.com", password: "correct-horse-battery", accountRole: "hacker" } as const;
+  const input = { email: "maya@example.com", password: "correct-horse-battery", applicationTypes: ["hacker"] };
 
   beforeEach(() => {
     authSignUp.mockResolvedValue({ data: { user: null, session: null }, error: null });
@@ -166,7 +166,7 @@ describe("signUp confirmation redirect", () => {
       { NODE_ENV: "production", SITE_URL: "https://apply.example.org/ignored/?ref=email" },
       "https://apply.example.org/auth/callback",
     ],
-    ["Vercel production", VERCEL_PRODUCTION, "https://launchpad.example.com/auth/callback"],
+    ["Vercel production", VERCEL_PRODUCTION, "https://mission-control.example.com/auth/callback"],
   ])("sends /auth/callback on %s as emailRedirectTo", async (_label, env: SiteEnv, expected) => {
     stubSiteEnv(env);
 
@@ -177,7 +177,7 @@ describe("signUp confirmation redirect", () => {
     expect(authSignUp).toHaveBeenCalledExactlyOnceWith({
       email: "maya@example.com",
       password: "correct-horse-battery",
-      options: { data: { account_role: "hacker" }, emailRedirectTo: expected },
+      options: { data: { application_types: ["hacker"] }, emailRedirectTo: expected },
     });
   });
 
@@ -189,7 +189,7 @@ describe("signUp confirmation redirect", () => {
     expect(authSignUp).toHaveBeenCalledExactlyOnceWith({
       email: "maya@example.com",
       password: "correct-horse-battery",
-      options: { data: { account_role: "hacker" } },
+      options: { data: { application_types: ["hacker"] } },
     });
   });
 
@@ -204,7 +204,7 @@ describe("signUp confirmation redirect", () => {
     expect(createClient).not.toHaveBeenCalled();
     expect(authSignUp).not.toHaveBeenCalled();
     expect(consoleError).toHaveBeenCalledExactlyOnceWith(
-      "[launchpad] signUp:siteUrl",
+      "[mission-control] signUp:siteUrl",
       expect.objectContaining({ message: expect.not.stringContaining("secret") }),
     );
   });
@@ -215,11 +215,11 @@ describe("signUp confirmation redirect", () => {
     const formData = new FormData();
     formData.append("email", "maya@example.com");
     formData.append("password", "correct-horse-battery");
-    formData.append("accountRole", "organizer");
+    formData.append("applicationTypes", "organizer");
 
     expect(await signUp(formData)).toMatchObject({
       ok: false,
-      error: { code: "validation_failed", fieldErrors: { accountRole: expect.any(Array) } },
+      error: { code: "validation_failed", fieldErrors: { applicationTypes: expect.any(Array) } },
     });
     expect(consoleError).not.toHaveBeenCalled();
     expect(createClient).not.toHaveBeenCalled();

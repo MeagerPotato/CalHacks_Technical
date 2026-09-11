@@ -56,7 +56,7 @@ export type Database = {
           {
             foreignKeyName: "applications_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -65,6 +65,7 @@ export type Database = {
       profiles: {
         Row: {
           account_role: Database["public"]["Enums"]["account_role"]
+          application_types: Database["public"]["Enums"]["application_type"][]
           created_at: string
           display_name: string | null
           email: string
@@ -73,6 +74,7 @@ export type Database = {
         }
         Insert: {
           account_role: Database["public"]["Enums"]["account_role"]
+          application_types?: Database["public"]["Enums"]["application_type"][]
           created_at?: string
           display_name?: string | null
           email: string
@@ -81,6 +83,7 @@ export type Database = {
         }
         Update: {
           account_role?: Database["public"]["Enums"]["account_role"]
+          application_types?: Database["public"]["Enums"]["application_type"][]
           created_at?: string
           display_name?: string | null
           email?: string

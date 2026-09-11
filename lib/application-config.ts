@@ -1,3 +1,4 @@
+import { COUNTRIES } from "@/lib/countries";
 import { IDENTITY_RESPONSE_KEYS } from "@/lib/domain/applicant-identity";
 import {
   PUBLIC_ACCOUNT_ROLES,
@@ -143,17 +144,29 @@ export const PROJECT_CATEGORY_OPTIONS = toOptions(PROJECT_CATEGORIES, {
   beginner_friendly: "Beginner-friendly",
 });
 
+/** Countries for countryOfResidence, United States first, then by name (lib/countries.ts). */
+export const COUNTRY_OPTIONS: readonly ChoiceOption[] = COUNTRIES.map((country) => ({
+  value: country.code,
+  label: country.name,
+}));
+
 // ---------------------------------------------------------------------------
 // Application form structure
 // ---------------------------------------------------------------------------
 
+/**
+ * `searchable_choice` is a single choice from a long list, rendered as a filterable combobox. `profile_link` is one
+ * link to a profile on a specific site. `date` is a YYYY-MM-DD calendar date.
+ */
 export type ApplicationFieldKind =
   | "short_text"
   | "long_text"
   | "whole_number"
+  | "date"
   | "single_choice"
+  | "searchable_choice"
   | "multi_choice"
-  | "link_list"
+  | "profile_link"
   | "agreement";
 
 interface FieldPresentation {
@@ -162,8 +175,13 @@ interface FieldPresentation {
   readonly maxLength?: number;
   readonly min?: number;
   readonly max?: number;
+  /** Inclusive YYYY-MM-DD bounds for dates. */
+  readonly minDate?: string;
+  readonly maxDate?: string;
   readonly maxItems?: number;
   readonly options?: readonly ChoiceOption[];
+  /** A sample value for profile links, shown in the generated hint. */
+  readonly example?: string;
 }
 
 export interface ApplicationFieldConfig extends FieldPresentation {
@@ -185,16 +203,48 @@ export interface ApplicationFormConfig {
   readonly sections: readonly ApplicationSectionConfig[];
 }
 
+// About you questions are worded as the user specified for Round 2 (PROJECT_PLAN.md section 0).
 const SHARED_FIELDS = {
-  preferredName: { label: "Preferred name", kind: "short_text", maxLength: APPLICATION_LIMITS.preferredName },
-  location: { label: "Location / time zone", kind: "short_text", maxLength: APPLICATION_LIMITS.shortText },
-  bio: { label: "Short biography", kind: "long_text", maxLength: APPLICATION_LIMITS.bio },
-  links: {
-    label: "Relevant links",
-    kind: "link_list",
-    maxItems: APPLICATION_LIMITS.links,
-    maxLength: APPLICATION_LIMITS.url,
+  fullName: {
+    label: "What is your full name (as it appears on your ID)?",
+    kind: "short_text",
+    maxLength: APPLICATION_LIMITS.shortText,
   },
+  birthdate: {
+    label: "What is your birthdate?",
+    kind: "date",
+    minDate: APPLICATION_LIMITS.birthdate.min,
+    maxDate: APPLICATION_LIMITS.birthdate.max,
+  },
+  countryOfResidence: {
+    label: "What is your country of residence?",
+    kind: "searchable_choice",
+    options: COUNTRY_OPTIONS,
+  },
+  cityOfResidence: {
+    label: "What is your city of residence?",
+    kind: "short_text",
+    maxLength: APPLICATION_LIMITS.shortText,
+  },
+  linkedinUrl: {
+    label: "LinkedIn profile",
+    kind: "profile_link",
+    maxLength: APPLICATION_LIMITS.url,
+    example: "https://www.linkedin.com/in/your-name",
+  },
+  githubUrl: {
+    label: "GitHub profile",
+    kind: "profile_link",
+    maxLength: APPLICATION_LIMITS.url,
+    example: "https://github.com/your-username",
+  },
+  devpostUrl: {
+    label: "Devpost profile",
+    kind: "profile_link",
+    maxLength: APPLICATION_LIMITS.url,
+    example: "https://devpost.com/your-username",
+  },
+  bio: { label: "Short biography", kind: "long_text", maxLength: APPLICATION_LIMITS.bio },
   codeOfConductAccepted: { label: "Code of conduct agreement", kind: "agreement" },
 } as const satisfies Record<string, FieldPresentation>;
 

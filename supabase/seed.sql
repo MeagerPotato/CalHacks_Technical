@@ -1,15 +1,15 @@
 -- =============================================================================
--- Launchpad demo seed data
+-- CalHacks Mission Control demo seed data
 --
 -- Loaded by `supabase db reset` after migrations, executed as postgres.
 -- Every account created here has an EMPTY password and cannot sign in.
 -- Create the organizer login and any demo applicant logins privately
 -- (see docs/infrastructure/environment-and-deployment.md). Never commit credentials.
 --
--- Contents: 13 applications (7 Hacker, 6 Judge) across every status, 3 completed
--- reviews written by a non-loginable seed organizer, and varied Judge expertise tags
+-- Contents: 14 applications (8 Hacker, 6 Judge) across every status, one account holding both a Hacker and a Judge
+-- application, 3 completed reviews written by a non-loginable seed organizer, and varied Judge expertise tags
 -- (mobile and climate intentionally have no judges, to show coverage gaps).
--- All names, schools, companies, and answers are fictional.
+-- All names, birthdates, places, schools, companies, and answers are fictional.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -42,7 +42,7 @@ select
   '',
   now() - seed.age,
   '{"provider": "email", "providers": ["email"]}'::jsonb,
-  jsonb_build_object('account_role', seed.account_role, 'display_name', seed.display_name),
+  jsonb_build_object('application_types', seed.application_types::jsonb, 'display_name', seed.display_name),
   now() - seed.age,
   now() - seed.age,
   '',
@@ -51,21 +51,21 @@ select
   ''
 from (
   values
-    ('a0000000-0000-4000-8000-000000000001', 'maya.chen@example.com', 'hacker', 'Maya Chen', interval '9 days'),
-    ('a0000000-0000-4000-8000-000000000002', 'jordan.alvarez@example.com', 'hacker', 'Jordan Alvarez', interval '5 days'),
-    ('a0000000-0000-4000-8000-000000000003', 'priya.natarajan@example.com', 'hacker', 'Priya Natarajan', interval '8 days'),
-    ('a0000000-0000-4000-8000-000000000004', 'samuel.okafor@example.com', 'hacker', 'Samuel Okafor', interval '7 days'),
-    ('a0000000-0000-4000-8000-000000000005', 'lena.fischer@example.com', 'hacker', 'Lena Fischer', interval '4 days'),
-    ('a0000000-0000-4000-8000-000000000006', 'diego.ramirez@example.com', 'hacker', 'Diego Ramirez', interval '10 days'),
-    ('a0000000-0000-4000-8000-000000000007', 'aisha.rahman@example.com', 'hacker', 'Aisha Rahman', interval '12 days'),
-    ('a0000000-0000-4000-8000-000000000008', 'evelyn.park@example.com', 'judge', 'Evelyn Park', interval '6 days'),
-    ('a0000000-0000-4000-8000-000000000009', 'marcus.bell@example.com', 'judge', 'Marcus Bell', interval '9 days'),
-    ('a0000000-0000-4000-8000-000000000010', 'sofia.rossi@example.com', 'judge', 'Sofia Rossi', interval '8 days'),
-    ('a0000000-0000-4000-8000-000000000011', 'kenji.watanabe@example.com', 'judge', 'Kenji Watanabe', interval '6 days'),
-    ('a0000000-0000-4000-8000-000000000012', 'hannah.lee@example.com', 'judge', 'Hannah Lee', interval '11 days'),
-    ('a0000000-0000-4000-8000-000000000013', 'omar.haddad@example.com', 'judge', 'Omar Haddad', interval '3 days'),
-    ('a0000000-0000-4000-8000-000000000099', 'seed.reviewer@example.com', 'hacker', 'Seed Reviewer', interval '14 days')
-) as seed (id, email, account_role, display_name, age);
+    ('a0000000-0000-4000-8000-000000000001', 'maya.chen@example.com', '["hacker"]', 'Maya Chen', interval '9 days'),
+    ('a0000000-0000-4000-8000-000000000002', 'jordan.alvarez@example.com', '["hacker"]', 'Jordan Alvarez', interval '5 days'),
+    ('a0000000-0000-4000-8000-000000000003', 'priya.natarajan@example.com', '["hacker"]', 'Priya Natarajan', interval '8 days'),
+    ('a0000000-0000-4000-8000-000000000004', 'samuel.okafor@example.com', '["hacker"]', 'Samuel Okafor', interval '7 days'),
+    ('a0000000-0000-4000-8000-000000000005', 'lena.fischer@example.com', '["hacker"]', 'Lena Fischer', interval '4 days'),
+    ('a0000000-0000-4000-8000-000000000006', 'diego.ramirez@example.com', '["hacker"]', 'Diego Ramirez', interval '10 days'),
+    ('a0000000-0000-4000-8000-000000000007', 'aisha.rahman@example.com', '["hacker"]', 'Aisha Rahman', interval '12 days'),
+    ('a0000000-0000-4000-8000-000000000008', 'evelyn.park@example.com', '["judge"]', 'Evelyn Park', interval '6 days'),
+    ('a0000000-0000-4000-8000-000000000009', 'marcus.bell@example.com', '["judge"]', 'Marcus Bell', interval '9 days'),
+    ('a0000000-0000-4000-8000-000000000010', 'sofia.rossi@example.com', '["judge"]', 'Sofia Rossi', interval '8 days'),
+    ('a0000000-0000-4000-8000-000000000011', 'kenji.watanabe@example.com', '["judge"]', 'Kenji Watanabe', interval '6 days'),
+    ('a0000000-0000-4000-8000-000000000012', 'hannah.lee@example.com', '["judge"]', 'Hannah Lee', interval '11 days'),
+    ('a0000000-0000-4000-8000-000000000013', 'omar.haddad@example.com', '["hacker", "judge"]', 'Omar Haddad', interval '3 days'),
+    ('a0000000-0000-4000-8000-000000000099', 'seed.reviewer@example.com', '["hacker"]', 'Seed Reviewer', interval '14 days')
+) as seed (id, email, application_types, display_name, age);
 
 -- The seed reviewer authors the demo reviews. It has no password and cannot sign in.
 select private.promote_to_organizer('seed.reviewer@example.com');
@@ -90,39 +90,41 @@ insert into public.applications (
   updated_at
 )
 values
-  -- Hacker: partially completed draft (8 of 12 required answers)
+  -- Hacker: partially completed draft (9 of 13 required answers)
   (
     'b0000000-0000-4000-8000-000000000001',
     'a0000000-0000-4000-8000-000000000001',
     'hacker',
     '{
-      "preferredName": "Maya Chen",
-      "location": "Oakland, CA (Pacific Time)",
+      "fullName": "Maya Chen",
+      "birthdate": "2006-03-14",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Oakland",
       "bio": "Second-year student who likes building small tools for student clubs.",
-      "links": [],
       "school": "Bayview State University",
       "major": "Computer Science",
       "graduationYear": 2028,
       "experienceLevel": "beginner",
       "skills": ["web", "design"]
     }'::jsonb,
-    67,
+    69,
     'draft',
     null, null, null,
     now() - interval '9 days',
     now() - interval '2 days'
   ),
-  -- Hacker: early draft (3 of 12 required answers)
+  -- Hacker: early draft (3 of 13 required answers)
   (
     'b0000000-0000-4000-8000-000000000002',
     'a0000000-0000-4000-8000-000000000002',
     'hacker',
     '{
-      "preferredName": "Jordan Alvarez",
-      "location": "Sacramento, CA (Pacific Time)",
+      "fullName": "Jordan Alvarez",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Sacramento",
       "bio": "Community college student getting into hardware projects."
     }'::jsonb,
-    25,
+    23,
     'draft',
     null, null, null,
     now() - interval '5 days',
@@ -134,10 +136,11 @@ values
     'a0000000-0000-4000-8000-000000000003',
     'hacker',
     '{
-      "preferredName": "Priya Natarajan",
-      "location": "San Jose, CA (Pacific Time)",
+      "fullName": "Priya Natarajan",
+      "birthdate": "2005-07-22",
+      "countryOfResidence": "US",
+      "cityOfResidence": "San Jose",
       "bio": "Data science student who volunteers as a peer tutor.",
-      "links": ["https://example.com/priya"],
       "school": "Golden Hills University",
       "major": "Data Science",
       "graduationYear": 2027,
@@ -160,10 +163,11 @@ values
     'a0000000-0000-4000-8000-000000000004',
     'hacker',
     '{
-      "preferredName": "Samuel Okafor",
-      "location": "Los Angeles, CA (Pacific Time)",
+      "fullName": "Samuel Okafor",
+      "birthdate": "2004-11-02",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Los Angeles",
       "bio": "Mechanical engineering student who enjoys robotics clubs.",
-      "links": [],
       "school": "Redwood Technical Institute",
       "major": "Mechanical Engineering",
       "graduationYear": 2026,
@@ -186,10 +190,11 @@ values
     'a0000000-0000-4000-8000-000000000005',
     'hacker',
     '{
-      "preferredName": "Lena Fischer",
-      "location": "Portland, OR (Pacific Time)",
+      "fullName": "Lena Fischer",
+      "birthdate": "2007-01-30",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Portland",
       "bio": "First-year student exploring mobile development.",
-      "links": [],
       "school": "Lakeside University",
       "major": "Undeclared",
       "graduationYear": 2029,
@@ -212,10 +217,11 @@ values
     'a0000000-0000-4000-8000-000000000006',
     'hacker',
     '{
-      "preferredName": "Diego Ramirez",
-      "location": "Fresno, CA (Pacific Time)",
+      "fullName": "Diego Ramirez",
+      "birthdate": "2005-05-09",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Fresno",
       "bio": "Computer engineering student and teaching assistant for an intro programming course.",
-      "links": ["https://example.com/diego"],
       "school": "Mission Valley College",
       "major": "Computer Engineering",
       "graduationYear": 2027,
@@ -238,10 +244,11 @@ values
     'a0000000-0000-4000-8000-000000000007',
     'hacker',
     '{
-      "preferredName": "Aisha Rahman",
-      "location": "Berkeley, CA (Pacific Time)",
+      "fullName": "Aisha Rahman",
+      "birthdate": "2004-09-18",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Berkeley",
       "bio": "Bioengineering student interested in health technology.",
-      "links": ["https://example.com/aisha"],
       "school": "Bayview State University",
       "major": "Bioengineering",
       "graduationYear": 2026,
@@ -258,22 +265,23 @@ values
     now() - interval '12 days',
     now() - interval '2 days'
   ),
-  -- Judge: partially completed draft (6 of 12 required answers)
+  -- Judge: partially completed draft (7 of 13 required answers)
   (
     'b0000000-0000-4000-8000-000000000008',
     'a0000000-0000-4000-8000-000000000008',
     'judge',
     '{
-      "preferredName": "Evelyn Park",
-      "location": "Seattle, WA (Pacific Time)",
+      "fullName": "Evelyn Park",
+      "birthdate": "1986-04-11",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Seattle",
       "bio": "Engineering manager who mentors early-career developers.",
-      "links": [],
       "company": "Cobalt Analytics",
       "roleTitle": "Engineering Manager",
       "yearsExperience": 12,
       "expertiseAreas": ["data", "web"]
     }'::jsonb,
-    50,
+    54,
     'draft',
     null, null, null,
     now() - interval '6 days',
@@ -285,10 +293,11 @@ values
     'a0000000-0000-4000-8000-000000000009',
     'judge',
     '{
-      "preferredName": "Marcus Bell",
-      "location": "San Francisco, CA (Pacific Time)",
+      "fullName": "Marcus Bell",
+      "birthdate": "1991-08-27",
+      "countryOfResidence": "US",
+      "cityOfResidence": "San Francisco",
       "bio": "Machine learning engineer focused on developer tooling.",
-      "links": ["https://example.com/marcus"],
       "company": "Tidewater Labs",
       "roleTitle": "Senior ML Engineer",
       "yearsExperience": 8,
@@ -313,10 +322,11 @@ values
     'a0000000-0000-4000-8000-000000000010',
     'judge',
     '{
-      "preferredName": "Sofia Rossi",
-      "location": "Austin, TX (Central Time)",
+      "fullName": "Sofia Rossi",
+      "birthdate": "1988-12-05",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Austin",
       "bio": "Product designer who teaches evening UX classes.",
-      "links": [],
       "company": "Parcel and Pine Studio",
       "roleTitle": "Principal Product Designer",
       "yearsExperience": 10,
@@ -340,10 +350,11 @@ values
     'a0000000-0000-4000-8000-000000000011',
     'judge',
     '{
-      "preferredName": "Kenji Watanabe",
-      "location": "San Diego, CA (Pacific Time)",
+      "fullName": "Kenji Watanabe",
+      "birthdate": "1983-02-19",
+      "countryOfResidence": "CA",
+      "cityOfResidence": "Vancouver",
       "bio": "Embedded systems engineer working on connected devices.",
-      "links": ["https://example.com/kenji"],
       "company": "Brightline Robotics",
       "roleTitle": "Staff Firmware Engineer",
       "yearsExperience": 15,
@@ -368,10 +379,11 @@ values
     'a0000000-0000-4000-8000-000000000012',
     'judge',
     '{
-      "preferredName": "Hannah Lee",
-      "location": "New York, NY (Eastern Time)",
+      "fullName": "Hannah Lee",
+      "birthdate": "1998-06-23",
+      "countryOfResidence": "US",
+      "cityOfResidence": "New York",
       "bio": "Full-stack developer at a payments startup.",
-      "links": [],
       "company": "Signal Harbor",
       "roleTitle": "Software Engineer",
       "yearsExperience": 3,
@@ -389,16 +401,17 @@ values
     now() - interval '11 days',
     now() - interval '1 day'
   ),
-  -- Judge: submitted, awaiting review
+  -- Judge: submitted, awaiting review (this account also has a Hacker draft)
   (
     'b0000000-0000-4000-8000-000000000013',
     'a0000000-0000-4000-8000-000000000013',
     'judge',
     '{
-      "preferredName": "Omar Haddad",
-      "location": "Chicago, IL (Central Time)",
+      "fullName": "Omar Haddad",
+      "birthdate": "1993-10-08",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Chicago",
       "bio": "Health data analyst and volunteer mentor.",
-      "links": [],
       "company": "",
       "roleTitle": "Senior Data Analyst",
       "yearsExperience": 6,
@@ -414,6 +427,23 @@ values
     'submitted',
     now() - interval '1 day', null, null,
     now() - interval '3 days',
+    now() - interval '1 day'
+  ),
+  -- Hacker: early draft from the account that also applied as a Judge (4 of 13 required answers)
+  (
+    'b0000000-0000-4000-8000-000000000014',
+    'a0000000-0000-4000-8000-000000000013',
+    'hacker',
+    '{
+      "fullName": "Omar Haddad",
+      "birthdate": "1993-10-08",
+      "countryOfResidence": "US",
+      "cityOfResidence": "Chicago"
+    }'::jsonb,
+    31,
+    'draft',
+    null, null, null,
+    now() - interval '2 days',
     now() - interval '1 day'
   );
 

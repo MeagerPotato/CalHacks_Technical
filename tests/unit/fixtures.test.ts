@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { APPLICATION_SCHEMAS, isHttpLink } from "@/lib/validation/application";
+import { APPLICATION_SCHEMAS } from "@/lib/validation/application";
 import { calculateApplicationCompletion } from "@/lib/validation/completion";
 import { toFieldErrors } from "@/lib/validation/errors";
 import { REVIEW_SCHEMAS } from "@/lib/validation/review";
@@ -55,26 +55,24 @@ describe.each(["hacker", "judge"] as const)("%s application fixtures", (type) =>
     expect(completion.sections.flatMap((section) => section.invalidFields)).toEqual([]);
   });
 
-  it("draft-invalid responses save as a draft but fail submission", () => {
+  it("draft-invalid responses save as a draft but fail submission only for missing required answers", () => {
     expect(draft.safeParse(fixtures.draftInvalid).success).toBe(true);
     expect(fixtures.draftInvalid).not.toHaveProperty(fixtures.omittedRequiredText);
     expect(fixtures.draftInvalid).not.toHaveProperty("codeOfConductAccepted");
-    expect(fixtures.draftInvalid.links.some((link) => !isHttpLink(link))).toBe(true);
 
     const result = submission.safeParse(fixtures.draftInvalid);
     if (result.success) {
       throw new Error("Expected the draft-invalid fixture to fail the submission schema.");
     }
-    expect(Object.keys(toFieldErrors(result.error))).toEqual(
-      expect.arrayContaining([fixtures.omittedRequiredText, "links", "codeOfConductAccepted"]),
+    expect(Object.keys(toFieldErrors(result.error)).sort()).toEqual(
+      [fixtures.omittedRequiredText, "codeOfConductAccepted"].sort(),
     );
 
     const completion = calculateApplicationCompletion(type, fixtures.draftInvalid);
     expect(completion.isSubmittable).toBe(false);
-    expect(completion.missingRequiredFields).toEqual(
-      expect.arrayContaining([fixtures.omittedRequiredText, "codeOfConductAccepted"]),
-    );
-    expect(completion.sections.find((section) => section.id === "about")?.invalidFields).toEqual(["links"]);
+    expect(completion.missingRequiredFields).toEqual([fixtures.omittedRequiredText, "codeOfConductAccepted"]);
+    // Drafts validate every saved answer, so nothing saved is invalid.
+    expect(completion.sections.flatMap((section) => section.invalidFields)).toEqual([]);
   });
 });
 

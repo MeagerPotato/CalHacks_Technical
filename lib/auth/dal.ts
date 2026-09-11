@@ -20,7 +20,7 @@ import type { TypedSupabaseClient } from "@/lib/supabase/types";
  *
  * - Identity comes from getClaims(), which verifies the session JWT (locally with asymmetric
  *   signing keys, or with the Auth server for symmetric keys).
- * - The role is read from public.profiles, never from user-editable auth metadata.
+ * - The role and application types are read from public.profiles, never from user-editable auth metadata.
  *
  * Returns null when signed out. Throws DataAccessError when the profile query fails.
  */
@@ -34,7 +34,7 @@ export async function loadViewer(supabase: TypedSupabaseClient): Promise<Viewer 
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, email, display_name, account_role")
+    .select("id, email, display_name, account_role, application_types")
     .eq("id", userId)
     .maybeSingle();
 
@@ -51,6 +51,7 @@ export async function loadViewer(supabase: TypedSupabaseClient): Promise<Viewer 
     email: profile.email,
     displayName: profile.display_name,
     accountRole: profile.account_role,
+    applicationTypes: profile.application_types,
     isOrganizer: profile.account_role === "organizer",
   };
 }

@@ -47,7 +47,10 @@ export function CheckboxGroup({
           : undefined;
 
         return (
-          <div key={option.value} className="flex items-start gap-3 py-1">
+          <div
+            key={option.value}
+            className="flex items-start gap-3 rounded-control border-2 border-transparent px-3 py-2 has-[:checked]:border-border has-[:checked]:bg-accent hover:bg-page"
+          >
             <input
               type="checkbox"
               id={optionId}
@@ -62,7 +65,7 @@ export function CheckboxGroup({
               className="peer mt-0.5 size-5 shrink-0 accent-ink disabled:cursor-not-allowed"
             />
             <div className="flex flex-col peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              <label htmlFor={optionId}>{option.label}</label>
+              <label htmlFor={optionId} className="font-semibold">{option.label}</label>
               {option.description ? (
                 <span id={descriptionId} className="text-sm">
                   {option.description}

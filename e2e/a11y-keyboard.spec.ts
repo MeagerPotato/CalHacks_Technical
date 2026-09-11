@@ -80,10 +80,10 @@ test.describe("keyboard", () => {
     const password = newPassword();
 
     await page.goto(ROUTES.signup);
-    const hackerRadio = page.getByRole("radio", { name: ACCOUNT_ROLE_LABELS.hacker });
-    await tabTo(page, hackerRadio);
+    const hackerCheckbox = page.getByRole("checkbox", { name: ACCOUNT_ROLE_LABELS.hacker });
+    await tabTo(page, hackerCheckbox);
     await page.keyboard.press("Space");
-    await expect(hackerRadio).toBeChecked();
+    await expect(hackerCheckbox).toBeChecked();
     await tabTo(page, page.getByLabel(COPY.auth.signup.email));
     await page.keyboard.type(email);
     await tabTo(page, page.getByLabel(COPY.auth.signup.password));
@@ -94,7 +94,7 @@ test.describe("keyboard", () => {
     await tabTo(page, page.getByLabel(COPY.onboarding.displayName));
     await page.keyboard.type("Keyboard Hacker");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/portal\/application\?section=about$/);
+    await expect(page).toHaveURL(/\/portal\/application\?type=hacker&section=about$/);
 
     // Everything except the Experience section is answered through the Data API to keep the test focused.
     const applicant = await signInDataClient(email, password);
@@ -138,6 +138,6 @@ test.describe("keyboard", () => {
     await page.goto("/portal/application?section=review");
     await tabTo(page, page.getByRole("button", { name: LOCKED.review.submit }));
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/portal\/mission$/);
+    await expect(page).toHaveURL(/\/portal\/mission\?type=hacker$/);
   });
 });

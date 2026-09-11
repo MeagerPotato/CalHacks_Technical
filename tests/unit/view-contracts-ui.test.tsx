@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EngineerArt } from "@/components/art/EngineerArt";
 import { HeroArt } from "@/components/art/HeroArt";
 import { LandingMoment } from "@/components/art/LandingMoment";
-import { LaunchpadMark } from "@/components/art/LaunchpadMark";
+import { BrandMark } from "@/components/art/BrandMark";
 import { LiftoffMoment } from "@/components/art/LiftoffMoment";
 import { RocketArt } from "@/components/art/RocketArt";
 import { Sticker } from "@/components/art/Sticker";
@@ -1018,8 +1018,8 @@ describe("art placeholders", () => {
     );
   });
 
-  it("renders the brand text in LaunchpadMark without hiding it", () => {
-    const html = renderToStaticMarkup(<LaunchpadMark />);
+  it("renders the brand text in BrandMark without hiding it", () => {
+    const html = renderToStaticMarkup(<BrandMark />);
     expect(textOf(html)).toBe(LOCKED.brand);
     expect(parseTags(html)[0].attrs).not.toHaveProperty("aria-hidden");
   });

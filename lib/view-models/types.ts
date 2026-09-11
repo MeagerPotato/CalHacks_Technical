@@ -1,4 +1,4 @@
-import type { ApplicationStatus, DecisionStatus } from "@/lib/domain/enums";
+import type { ApplicationStatus, ApplicationType, DecisionStatus } from "@/lib/domain/enums";
 import type { MissionLeg, MissionLegState, MissionStage } from "@/lib/domain/mission";
 import type { SectionCompletionStatus } from "@/lib/validation/completion";
 
@@ -9,7 +9,10 @@ import type { SectionCompletionStatus } from "@/lib/validation/completion";
 // already built, and every timestamp is already formatted on the server, so views never import logic modules.
 // =============================================================================
 
-/** A server-formatted instant. `iso` feeds `<time dateTime>`; `label` is the display text in the event time zone. */
+/**
+ * A server-formatted instant or calendar day. `iso` feeds `<time dateTime>`: a UTC instant, or YYYY-MM-DD for a value
+ * shown as a date. `label` is the display text in the event time zone.
+ */
 export interface TimestampView {
   iso: string;
   label: string;
@@ -138,10 +141,29 @@ export interface MissionView {
   reviewNote: string | null;
 }
 
+/** One application in the portal's application switcher. */
+export interface ApplicationSwitcherItemView {
+  type: ApplicationType;
+  label: string;
+  href: string;
+  /** The application this page shows. */
+  isCurrent: boolean;
+}
+
+/** Links between an applicant's Hacker and Judge dashboards. Present only when they hold both applications. */
+export interface ApplicationSwitcherView {
+  /** Accessible name of the switcher's navigation landmark. */
+  label: string;
+  /** In form order: Hacker, then Judge. */
+  items: ApplicationSwitcherItemView[];
+}
+
 export interface PortalWelcomeView {
   greeting: string;
   typeLabel: string;
   reference: string;
+  /** Null when the applicant holds one application; the type badge shows instead. */
+  switcher: ApplicationSwitcherView | null;
 }
 
 export interface PortalProgressView {
@@ -176,6 +198,78 @@ export interface PortalSubmittedView {
 }
 
 export type PortalView = PortalDraftView | PortalSubmittedView;
+
+export type TimelineStopId = "applicationsOpen" | "applicationDeadline" | "resultsReleased" | "event";
+
+/** `active` is a stop in progress: applications while they are open, or the event while it runs. */
+export type TimelineStopState = "complete" | "active" | "upcoming";
+
+/** One milestone on the landing page's mission timeline. */
+export interface TimelineStopView {
+  id: TimelineStopId;
+  name: string;
+  state: TimelineStopState;
+  /** The state as text; the current upcoming stop reads as up next. */
+  stateLabel: string;
+  /** The stop in progress, or the next stop when none is. At most one stop is current; none after the event. */
+  isCurrent: boolean;
+  /** Its date (or date and time), or null when `whenText` stands in. */
+  when: TimestampView | null;
+  /** "Open now" or "To be announced" when there is no date; null when `when` is set or there is nothing to show. */
+  whenText: string | null;
+}
+
+/** The event schedule in order: applications open, application deadline, results released, event dates. */
+export interface TimelineView {
+  title: string;
+  stops: TimelineStopView[];
+}
+
+/** `launch` counts down to the application deadline; `landing` counts down to the start of the event. */
+export type CountdownId = "launch" | "landing";
+
+/** The fixed parts of one countdown, built on the server. */
+export interface CountdownTimerView {
+  id: CountdownId;
+  title: string;
+  /** Text before the target, for example "Applications due". */
+  caption: string;
+  /** The target as displayed: a date and time for the deadline, a date for the event. */
+  target: TimestampView;
+  /** The UTC instant the countdown reaches zero. */
+  endsAt: string;
+  /** Shown instead of the reading once the target has passed. */
+  completeText: string;
+}
+
+/** The countdown panel on the landing page and the portal. Null from the builder when no countdown has a date. */
+export interface CountdownsView {
+  title: string;
+  /** Label of the pause toggle. It stays the same; `aria-pressed` reports the state. */
+  pauseLabel: string;
+  /** The server clock (epoch milliseconds) when the page rendered. The server render and hydration read from it. */
+  renderedAt: number;
+  timers: CountdownTimerView[];
+}
+
+export type CountdownUnit = "days" | "hours" | "minutes" | "seconds";
+
+export interface CountdownUnitView {
+  unit: CountdownUnit;
+  /** Days as a plain number; hours, minutes, and seconds as two digits. */
+  value: string;
+  label: string;
+}
+
+/** One countdown's reading at a moment, recomputed every second in the browser. */
+export interface CountdownReadingView {
+  id: CountdownId;
+  state: "counting" | "complete";
+  /** Days, hours, minutes, and seconds while counting; empty once complete. */
+  units: CountdownUnitView[];
+  /** The time left to the minute for assistive technology, or the complete text. */
+  summary: string;
+}
 
 /** Resolved label and helper text for one application field. */
 export interface FieldCopyView {

@@ -79,7 +79,7 @@ export function ReviewStep({
         <Notice id="review-incomplete" tone="info" title={COPY.review.missing(missingCount)}>
           {firstIncomplete ? (
             <AppLink
-              href={applicationStepHref(firstIncomplete)}
+              href={applicationStepHref(saved.type, firstIncomplete)}
               onClick={(event) => onSelectStep(firstIncomplete, event)}
             >
               {COPY.review.goToMissing(getSectionLabel(saved.type, firstIncomplete))}

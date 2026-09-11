@@ -1,6 +1,6 @@
-# Launchpad applicant product (Phase 2)
+# CalHacks Mission Control applicant product (Phase 2)
 
-Phase 2 builds the applicant side of Launchpad on the Phase 1 backend contract ([docs/infrastructure](../infrastructure/README.md)). It changes no migrations, RLS policies, or Server Action signatures.
+Phase 2 builds the applicant side of CalHacks Mission Control on the Phase 1 backend contract ([docs/infrastructure](../infrastructure/README.md)). It changes no migrations, RLS policies, or Server Action signatures.
 
 | Document | Audience |
 |---|---|
@@ -13,19 +13,21 @@ Phase 2 builds the applicant side of Launchpad on the Phase 1 backend contract (
 
 | Route | Files | Guard and data | Renders |
 |---|---|---|---|
-| `/` | `app/(marketing)/page.tsx` | none | `LandingView` |
+| `/` | `app/(marketing)/page.tsx` | none; renders per request (`connection()`) so the schedule starts from the visit time | `LandingView` with `LiveCountdowns` and `MissionTimeline` |
 | `/login` | `app/(auth)/login/page.tsx`, `_components/LoginForm.tsx` | Sanitizes `next` (1–2048 characters) and `error` (known callback codes only) | `AuthShell`, callback notice, `LoginForm` |
-| `/signup` | `app/(auth)/signup/page.tsx`, `_components/SignupForm.tsx` | none | `AuthShell`, `SignupForm` (Hacker or Judge), `CheckEmailNotice` when confirmation is on |
+| `/signup` | `app/(auth)/signup/page.tsx`, `_components/SignupForm.tsx` | none | `AuthShell`, `SignupForm` (Hacker, Judge, or both), `CheckEmailNotice` when confirmation is on |
 | `/auth/callback` | `app/auth/callback/route.ts` | PKCE code exchange | Redirects to `/onboarding` or `/login?error=<code>` |
-| `/onboarding` | `app/onboarding/page.tsx`, `_components/OnboardingForm.tsx` | `requireApplicant`; redirects to the editor once an application exists | Account type, display name, "Start application" |
-| `/portal` | `app/portal/layout.tsx`, `page.tsx` | `requireApplicant`; no application redirects to `/onboarding` | `PortalDraftDashboard` or `PortalSubmittedDashboard` |
-| `/portal/application` | `app/portal/application/page.tsx`, `_components/*` | `requireApplicant`; `?section=<step>` selects the step | The editor, or the read-only submitted view |
-| `/portal/mission` | `app/portal/mission/page.tsx` | `requireApplicant`; drafts redirect to `/portal` | `MissionTracker` |
+| `/onboarding` | `app/onboarding/page.tsx`, `_components/OnboardingForm.tsx` | `requireApplicant`; redirects to the editor once every chosen application exists | "Applying as" badges, display name, "Start application" |
+| `/portal?type=` | `app/portal/layout.tsx`, `page.tsx` | `requireApplicant`; a missing application redirects to `/onboarding` | `PortalDraftDashboard` or `PortalSubmittedDashboard` with `LiveCountdowns`, and the application switcher when the account holds both |
+| `/portal/application?type=` | `app/portal/application/page.tsx`, `_components/*` | `requireApplicant`; `?section=<step>` selects the step | The editor, or the read-only submitted view |
+| `/portal/mission?type=` | `app/portal/mission/page.tsx` | `requireApplicant`; drafts redirect to `/portal?type=` | `MissionTracker` |
+
+`?type=hacker` or `?type=judge` selects one of the account's applications. A missing value means the first one the account holds; a value it does not hold redirects to that first one ([backend-contract.md](../infrastructure/backend-contract.md#choosing-an-application-type)).
 | `/dev/gallery` | `app/dev/gallery/*` | 404 in production | Every view and state from fixtures |
 
 Each segment that loads data has `loading.tsx` and `error.tsx`. The root has `error.tsx`, `global-error.tsx`, and `not-found.tsx`.
 
-Render redirects always point where the client is already heading. For example, onboarding redirects to the editor because the onboarding form navigates there after `createApplication`, and the editor never redirects on status. A Server Action's `revalidatePath` re-renders the current route in the same response, so this rule avoids a redirect racing the client's own navigation.
+Render redirects always point where the client is already heading. For example, onboarding redirects to the editor because the onboarding form navigates there after `createApplications`, and the editor never redirects on status. A Server Action's `revalidatePath` re-renders the current route in the same response, so this rule avoids a redirect racing the client's own navigation.
 
 ## Layers
 
@@ -35,8 +37,8 @@ ESLint enforces these boundaries (`eslint.config.mjs`).
 |---|---|---|
 | `app/**` | Guards, data loading, Server Action calls, client containers, focus, navigation | No `className` or `style` except in `app/layout.tsx` and `app/global-error.tsx`. Presentation belongs in `components`. |
 | `components/**` | Presentational views and primitives | Hook-free views with display-ready props. Handlers attach only when a callback is passed. No Supabase, `next/navigation`, `next/headers`, `next/cache`, `next/link`, `server-only`, or logic-module runtime imports. |
-| `lib/editor`, `lib/view-models`, `lib/format`, `lib/event.ts` | Pure logic: editor values, steps, reducer, feedback mapping, view models, date formatting | No React. Unit tested. |
-| `lib/client` | `useReducedMotion`, the navigation guard, `GuardedLink` | Client-only helpers |
+| `lib/editor`, `lib/view-models`, `lib/format`, `lib/event.ts` | Pure logic: editor values, steps, reducer, feedback mapping, view models, date formatting, countdown arithmetic, the event schedule | No React. Unit tested. |
+| `lib/client` | `useReducedMotion`, `useNow`, the navigation guard, `GuardedLink` | Client-only helpers |
 | `content/copy.ts` | `LOCKED` plan-literal strings, and `COPY`, `FIELD_COPY`, and `SECTION_COPY` supporting copy | Hints that restate validation rules are generated from the form config in `lib/view-models/fields.ts` |
 
 Product code cannot import `tests`, fixtures, or `app/dev`.
@@ -55,7 +57,7 @@ Auth and onboarding forms are client components. On submit they:
 
 A thrown action call becomes a notice through `thrownActionNotice` (`app/_components/thrown-notice.ts`):
 
-- an unrecognized action (a new deployment) shows "Launchpad was updated" with a reload action;
+- an unrecognized action (a new deployment) shows "CalHacks Mission Control was updated" with a reload action;
 - anything else shows the auth network notice.
 
 If onboarding finds the session expired, it sends the applicant to sign in and back. Progress is announced through the always-mounted `LiveStatus`.
@@ -98,6 +100,20 @@ If onboarding finds the session expired, it sends the applicant to sign in and b
 
 **Mobile.** Below the large breakpoint, the section list becomes a select with a Go button.
 
+## Schedule, timeline, and countdowns
+
+`EVENT_SCHEDULE` in `lib/event.ts` holds the dates. Pages call `toScheduleViews(EVENT_SCHEDULE)` once per request. It reads the clock outside render and builds both view models for that moment:
+
+- `toTimelineView` (`lib/view-models/schedule.ts`) builds the landing page's four stops: applications open, application deadline, results released, and event dates. Each stop is `complete` once it is over, `active` while in progress (applications while open, the event while it runs), and `upcoming` otherwise. The current stop is the active one, or the next upcoming one when none is; its state label is `COPY.schedule.timeline.states.next`. After the event, no stop is current.
+- `toCountdownsView` builds the countdown panel: `launch` counts to the application deadline, and `landing` counts to midnight Pacific on the first event day. Each countdown appears only when its date is set.
+
+`LiveCountdowns` (`app/_components/LiveCountdowns.tsx`) renders `CountdownPanel` on the landing page and both portal dashboards:
+
+- **Ticks.** `useNow` (`lib/client/use-now.ts`) is one shared clock that ticks just after each whole second and stops when nothing listens. `toCountdownReading` (`lib/view-models/countdown.ts`) runs on every tick. It formats only whole numbers, so the server and the browser produce the same text.
+- **Hydration.** The server render and hydration read the server clock (`renderedAt`), then the browser clock takes over.
+- **Pause.** The toggle keeps its label and reports its state with `aria-pressed`. It freezes both readings and stops the ticks, because content that updates on its own for more than five seconds must be pausable (WCAG 2.2.2).
+- **Screen readers.** The digits are `aria-hidden`. A visually hidden summary gives the time left to the minute.
+
 ## Accessibility
 
 - A skip link to `main#main` is the first focusable element on every page, and each page has one `main`. The root layout renders it through `app/_components/SkipToContent.tsx`, which focuses `main` directly.
@@ -112,7 +128,13 @@ If onboarding finds the session expired, it sends the applicant to sign in and b
 
 ## Configuration
 
-- `lib/event.ts` sets the event time zone used for every displayed timestamp, and `APPLICATION_DEADLINE`: 5:00 PM Pacific on September 11, 2026 (`2026-09-11T17:00:00-07:00`). The portal's deadline card displays it; nothing closes when it passes. Set it to `null` to show "To be announced".
+- `lib/event.ts` sets the event time zone used for every displayed timestamp, and `EVENT_SCHEDULE`. It holds the Cal Hacks 13.0 regular round published on calhacks.io:
+  - Applications open: no published date, so it shows `COPY.schedule.timeline.openNow`.
+  - Application deadline (`APPLICATION_DEADLINE`): 11:59 PM Pacific on September 20, 2026. Nothing closes when it passes.
+  - Results released: September 25, 2026.
+  - Event: October 23 to 25, 2026. No start time is published, so the landing countdown ends at midnight Pacific on October 23.
+
+  Set any date to `null` to show `COPY.schedule.timeline.toBeAnnounced`. Dates published without a time are stored as midnight Pacific and shown as dates.
 - `SITE_URL` and hosted Auth settings are described in [environment-and-deployment.md](../infrastructure/environment-and-deployment.md).
 
 ## Tests

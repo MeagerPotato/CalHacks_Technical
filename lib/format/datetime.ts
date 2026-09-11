@@ -15,6 +15,33 @@ const EVENT_DATE_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {
   timeZoneName: "short",
 });
 
+// Date-only labels are assembled from parts, so a range reads the same on every host.
+const EVENT_NAMED_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: EVENT_TIME_ZONE,
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
+const EVENT_NUMERIC_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: EVENT_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const RANGE_DASH = "–";
+
+// A calendar date such as a birthdate names a day, not an instant, so it is formatted in UTC to avoid any shift.
+const CALENDAR_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
+const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 // A date, a time, optional seconds and fraction, and an explicit offset. Without an offset, ECMAScript would read the
 // value in the server's local time zone, so the same string could name different instants on different hosts.
 const ISO_INSTANT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -84,4 +111,95 @@ export function toTimestampView(iso: string | null | undefined): TimestampView |
     return null;
   }
   return { iso: new Date(time).toISOString(), label: formatInstant(time) };
+}
+
+/**
+ * Formats a YYYY-MM-DD calendar date, for example "2006-02-14" as "Feb 14, 2006". Returns null for a missing value or
+ * anything that is not a real date, so an impossible day is never rolled into another one.
+ */
+export function formatCalendarDate(value: string | null | undefined): string | null {
+  const match = typeof value === "string" ? CALENDAR_DATE_PATTERN.exec(value.trim()) : null;
+  if (match === null) {
+    return null;
+  }
+  const [year, month, day] = match.slice(1).map(Number);
+  const time = Date.UTC(year, month - 1, day);
+  const date = new Date(time);
+  // Date.UTC rolls impossible days forward and maps years below 100 into the 1900s; both change a field.
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null;
+  }
+  return CALENDAR_DATE_FORMAT.format(time).replace(WHITESPACE_RUN, " ");
+}
+
+interface CalendarDay {
+  /** YYYY-MM-DD, a valid `<time dateTime>` value. */
+  iso: string;
+  year: string;
+  /** Short month name, for example "Oct". */
+  month: string;
+  day: string;
+}
+
+function dateParts(format: Intl.DateTimeFormat, time: number): { year: string; month: string; day: string } {
+  const parts = { year: "", month: "", day: "" };
+  for (const part of format.formatToParts(time)) {
+    if (part.type === "year" || part.type === "month" || part.type === "day") {
+      parts[part.type] = part.value;
+    }
+  }
+  return parts;
+}
+
+/** The calendar day an instant falls on in the event time zone. */
+function toCalendarDay(time: number): CalendarDay {
+  const numeric = dateParts(EVENT_NUMERIC_DATE_FORMAT, time);
+  const named = dateParts(EVENT_NAMED_DATE_FORMAT, time);
+  return { iso: `${numeric.year}-${numeric.month}-${numeric.day}`, year: named.year, month: named.month, day: named.day };
+}
+
+function dayLabel(day: CalendarDay): string {
+  return `${day.month} ${day.day}, ${day.year}`;
+}
+
+/**
+ * The event-time-zone calendar day of an instant, for milestones published without a time: `iso` is YYYY-MM-DD and
+ * `label` is, for example, "Sep 25, 2026". Returns null for a missing, blank, or unparseable value.
+ */
+export function toDateView(iso: string | null | undefined): TimestampView | null {
+  const time = typeof iso === "string" ? parseInstant(iso) : Number.NaN;
+  if (Number.isNaN(time)) {
+    return null;
+  }
+  const day = toCalendarDay(time);
+  return { iso: day.iso, label: dayLabel(day) };
+}
+
+/**
+ * The days from `startsAt` up to, but not including, `endsAt`, in the event time zone. `iso` is the first day
+ * (YYYY-MM-DD). `label` names the range compactly: "Oct 23, 2026" for one day, "Oct 23–25, 2026" within a month,
+ * "Oct 30 – Nov 1, 2026" across months, and "Dec 31, 2026 – Jan 2, 2027" across years. Returns null when either value
+ * is unparseable or `endsAt` is not after `startsAt`.
+ */
+export function toDateRangeView(startsAt: string, endsAt: string): TimestampView | null {
+  const start = parseInstant(startsAt);
+  const end = parseInstant(endsAt);
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+    return null;
+  }
+  const first = toCalendarDay(start);
+  // `endsAt` is exclusive, so the last day is the one holding the instant just before it.
+  const last = toCalendarDay(end - 1);
+
+  let label: string;
+  if (first.iso === last.iso) {
+    label = dayLabel(first);
+  } else if (first.year !== last.year) {
+    label = `${dayLabel(first)} ${RANGE_DASH} ${dayLabel(last)}`;
+  } else if (first.month !== last.month) {
+    label = `${first.month} ${first.day} ${RANGE_DASH} ${dayLabel(last)}`;
+  } else {
+    label = `${first.month} ${first.day}${RANGE_DASH}${last.day}, ${last.year}`;
+  }
+  return { iso: first.iso, label };
 }

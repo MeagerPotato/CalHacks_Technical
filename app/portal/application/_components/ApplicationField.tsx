@@ -2,6 +2,7 @@
 
 import { Checkbox } from "@/components/ui/Checkbox";
 import { CheckboxGroup } from "@/components/ui/CheckboxGroup";
+import { Combobox } from "@/components/ui/Combobox";
 import { Field, FieldGroup } from "@/components/ui/Field";
 import { RadioGroup } from "@/components/ui/RadioGroup";
 import { TextInput } from "@/components/ui/TextInput";
@@ -30,9 +31,20 @@ function asList(value: UiValue | undefined): string[] {
 
 /** Input purposes for fields about the applicant (WCAG 1.3.5), so browsers can offer saved details. */
 const AUTOCOMPLETE_TOKENS: Readonly<Partial<Record<string, string>>> = {
-  preferredName: "nickname",
+  fullName: "name",
+  birthdate: "bday",
+  countryOfResidence: "country-name",
+  cityOfResidence: "address-level2",
+  linkedinUrl: "url",
+  githubUrl: "url",
+  devpostUrl: "url",
   company: "organization",
   roleTitle: "organization-title",
+};
+
+const TEXT_INPUT_TYPES: Readonly<Partial<Record<ApplicationFieldConfig["kind"], "date" | "url">>> = {
+  date: "date",
+  profile_link: "url",
 };
 
 /** Maps one application field to its form primitive, wiring ids, generated hints, counters, and errors. */
@@ -46,6 +58,7 @@ export function ApplicationField({ type, field, value, errors, onChange }: Appli
     hint: copy.hint ?? undefined,
     help: copy.help ?? undefined,
     errors: errorList,
+    required: field.required,
     optionalText: copy.optionalText ?? undefined,
   };
 
@@ -53,7 +66,8 @@ export function ApplicationField({ type, field, value, errors, onChange }: Appli
     case "short_text":
     case "whole_number":
     case "long_text":
-    case "link_list": {
+    case "date":
+    case "profile_link": {
       const text = asText(value);
       const counted = field.kind === "long_text" && field.maxLength !== undefined;
       const count = counted ? countCharacters(text) : 0;
@@ -61,7 +75,6 @@ export function ApplicationField({ type, field, value, errors, onChange }: Appli
         <Field
           {...shared}
           label={copy.label}
-          required={field.required}
           counter={
             counted && field.maxLength !== undefined
               ? { current: count, max: field.maxLength, text: COPY.editor.characterCount(count, field.maxLength) }
@@ -74,11 +87,35 @@ export function ApplicationField({ type, field, value, errors, onChange }: Appli
               name={field.key}
               value={text}
               onValueChange={(next) => onChange(field.key, next)}
-              multiline={field.kind === "long_text" || field.kind === "link_list"}
-              rows={field.kind === "long_text" ? 6 : field.kind === "link_list" ? 3 : undefined}
+              type={TEXT_INPUT_TYPES[field.kind]}
+              min={field.kind === "date" ? field.minDate : undefined}
+              max={field.kind === "date" ? field.maxDate : undefined}
+              multiline={field.kind === "long_text"}
+              rows={field.kind === "long_text" ? 6 : undefined}
               inputMode={field.kind === "whole_number" ? "numeric" : undefined}
-              autoComplete={field.kind === "link_list" ? "off" : AUTOCOMPLETE_TOKENS[field.key]}
-              spellCheck={field.kind === "link_list" ? false : undefined}
+              autoComplete={AUTOCOMPLETE_TOKENS[field.key]}
+              spellCheck={field.kind === "profile_link" ? false : undefined}
+              describedBy={control.describedBy}
+              invalid={control.invalid}
+              required={control.required}
+            />
+          )}
+        </Field>
+      );
+    }
+    case "searchable_choice": {
+      return (
+        <Field {...shared} label={copy.label}>
+          {(control) => (
+            <Combobox
+              id={control.id}
+              options={[...(field.options ?? [])]}
+              value={asText(value)}
+              onValueChange={(next) => onChange(field.key, next)}
+              listLabel={copy.label}
+              toggleLabel={COPY.editor.combobox.showOptions}
+              noResultsText={COPY.editor.combobox.noResults}
+              autoComplete={AUTOCOMPLETE_TOKENS[field.key]}
               describedBy={control.describedBy}
               invalid={control.invalid}
               required={control.required}

@@ -85,7 +85,7 @@ export class InvalidSiteUrlError extends Error {
   constructor(variable: SiteUrlVariable) {
     super(
       variable === "SITE_URL"
-        ? "SITE_URL must be an absolute http:// or https:// URL, such as https://launchpad.example.com."
+        ? "SITE_URL must be an absolute http:// or https:// URL, such as https://mission-control.example.com."
         : `${variable} must be a hostname without a protocol, path, or query.`,
     );
     this.name = "InvalidSiteUrlError";

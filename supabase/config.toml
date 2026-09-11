@@ -84,7 +84,7 @@ allowed_cidrs_v6 = ["::/0"]
 # enabled = true
 
 [realtime]
-# Not used by Launchpad (no real-time collaboration in scope).
+# Not used by CalHacks Mission Control (no real-time collaboration in scope).
 enabled = false
 # Bind realtime via either IPv4 or IPv6. (default: IPv4)
 # ip_version = "IPv6"
@@ -113,7 +113,7 @@ port = 54324
 # sender_name = "Admin"
 
 [storage]
-# Not used by Launchpad (file uploads are out of scope).
+# Not used by CalHacks Mission Control (file uploads are out of scope).
 enabled = false
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
@@ -382,7 +382,7 @@ authorization_url_path = "/oauth/consent"
 allow_dynamic_registration = false
 
 [edge_runtime]
-# Not used by Launchpad (no Edge Functions; all server logic runs in Next.js).
+# Not used by CalHacks Mission Control (no Edge Functions; all server logic runs in Next.js).
 enabled = false
 # Supported request policies: `oneshot`, `per_worker`.
 # `per_worker` (default) — enables hot reload during local development.

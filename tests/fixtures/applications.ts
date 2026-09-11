@@ -7,10 +7,12 @@ import type {
 
 /** A complete, valid Hacker application. */
 export const validHackerResponses = {
-  preferredName: "Test Hacker",
-  location: "Berkeley, CA (Pacific Time)",
+  fullName: "Test Hacker",
+  birthdate: "2005-04-12",
+  countryOfResidence: "US",
+  cityOfResidence: "Berkeley",
+  githubUrl: "https://github.com/test-hacker",
   bio: "Student builder who enjoys small web projects.",
-  links: ["https://example.com/test-hacker"],
   school: "Example University",
   major: "Computer Science",
   graduationYear: 2027,
@@ -24,10 +26,12 @@ export const validHackerResponses = {
 
 /** A complete, valid Judge application. */
 export const validJudgeResponses = {
-  preferredName: "Test Judge",
-  location: "San Francisco, CA (Pacific Time)",
+  fullName: "Test Judge",
+  birthdate: "1990-02-03",
+  countryOfResidence: "CA",
+  cityOfResidence: "Toronto",
+  linkedinUrl: "https://www.linkedin.com/in/test-judge",
   bio: "Engineer who mentors student teams.",
-  links: [],
   company: "Example Labs",
   roleTitle: "Staff Engineer",
   yearsExperience: 9,
@@ -46,10 +50,11 @@ export const validJudgeResponses = {
  * Short answers, and Agreements are untouched.
  */
 export const partialHackerResponses = {
-  preferredName: "Partial Hacker",
-  location: "Berkeley, CA (Pacific Time)",
+  fullName: "Partial Hacker",
+  birthdate: "2006-01-20",
+  countryOfResidence: "US",
+  cityOfResidence: "Berkeley",
   bio: "Student builder who is partway through this application.",
-  links: ["https://example.com/partial-hacker"],
   school: "Example University",
 } satisfies HackerApplicationDraftInput;
 
@@ -58,8 +63,10 @@ export const partialHackerResponses = {
  * Short answers and Agreements are untouched.
  */
 export const partialJudgeResponses = {
-  preferredName: "Partial Judge",
-  location: "San Francisco, CA (Pacific Time)",
+  fullName: "Partial Judge",
+  birthdate: "1988-07-19",
+  countryOfResidence: "US",
+  cityOfResidence: "San Francisco",
   bio: "Engineer who is partway through this application.",
   company: "Example Labs",
   roleTitle: "Staff Engineer",
@@ -70,13 +77,14 @@ export const partialJudgeResponses = {
 
 /**
  * A Hacker draft that saves but cannot be submitted: the required `proudProject` answer and the
- * code of conduct agreement are missing, and the link is not http(s). Drafts accept any link text.
+ * code of conduct agreement are missing. Every saved answer is valid.
  */
 export const draftInvalidHackerResponses = {
-  preferredName: "Draft Hacker",
-  location: "Berkeley, CA (Pacific Time)",
+  fullName: "Draft Hacker",
+  birthdate: "2004-10-01",
+  countryOfResidence: "US",
+  cityOfResidence: "Berkeley",
   bio: "Student builder with a draft that is not ready to submit.",
-  links: ["ftp://example.com/draft-hacker"],
   school: "Example University",
   major: "Computer Science",
   graduationYear: 2027,
@@ -88,13 +96,14 @@ export const draftInvalidHackerResponses = {
 
 /**
  * A Judge draft that saves but cannot be submitted: the required `motivation` answer and the code
- * of conduct agreement are missing, and the link is not http(s). Drafts accept any link text.
+ * of conduct agreement are missing. Every saved answer is valid.
  */
 export const draftInvalidJudgeResponses = {
-  preferredName: "Draft Judge",
-  location: "San Francisco, CA (Pacific Time)",
+  fullName: "Draft Judge",
+  birthdate: "1985-03-30",
+  countryOfResidence: "US",
+  cityOfResidence: "San Francisco",
   bio: "Engineer with a draft that is not ready to submit.",
-  links: ["ftp://example.com/draft-judge"],
   company: "Example Labs",
   roleTitle: "Staff Engineer",
   yearsExperience: 9,

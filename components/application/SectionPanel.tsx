@@ -9,6 +9,8 @@ export interface SectionPanelProps {
   headingId: string;
   title: string;
   intro?: string | null;
+  /** Explains the required marker (`COPY.editor.requiredLegend`); rendered as `data-required-legend`. */
+  requiredLegend?: string | null;
   /** The step's fields. */
   children: ReactNode;
   /** The action row after the fields, for example Save & continue and Save draft. */
@@ -24,6 +26,7 @@ export function SectionPanel({
   headingId,
   title,
   intro,
+  requiredLegend,
   children,
   actions,
   onSubmit,
@@ -36,6 +39,11 @@ export function SectionPanel({
           {title}
         </h2>
         {intro ? <p>{intro}</p> : null}
+        {requiredLegend ? (
+          <p data-required-legend="" className="w-fit rounded-full border border-border bg-page px-3 py-1 text-sm font-semibold">
+            {requiredLegend}
+          </p>
+        ) : null}
       </div>
       {onSubmit ? (
         <Form aria-labelledby={headingId} onSubmit={onSubmit} ref={formRef}>

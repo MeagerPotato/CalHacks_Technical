@@ -10,7 +10,7 @@ export type AccountRole = (typeof ACCOUNT_ROLES)[number];
 export const PUBLIC_ACCOUNT_ROLES = ["hacker", "judge"] as const;
 export type PublicAccountRole = (typeof PUBLIC_ACCOUNT_ROLES)[number];
 
-/** Application forms. An applicant's type always equals their account role. */
+/** Application forms, in form order. An account applies for one or both, chosen at signup. */
 export const APPLICATION_TYPES = ["hacker", "judge"] as const;
 export type ApplicationType = (typeof APPLICATION_TYPES)[number];
 

@@ -36,8 +36,10 @@ function generatedHint(field: ApplicationFieldConfig): string | null {
   switch (field.kind) {
     case "whole_number":
       return field.min !== undefined && field.max !== undefined ? hints.wholeNumber(field.min, field.max) : null;
-    case "link_list":
-      return field.maxItems !== undefined ? hints.links(field.maxItems) : null;
+    case "profile_link":
+      return field.example !== undefined ? hints.profileLink(field.example) : null;
+    case "searchable_choice":
+      return hints.searchableChoice;
     case "multi_choice":
       return field.maxItems !== undefined ? hints.chooseUpTo(field.maxItems) : null;
     case "short_text":

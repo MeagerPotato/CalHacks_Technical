@@ -7,6 +7,7 @@ const DATABASE_HINT_CODES: Record<string, ActionErrorCode> = {
   forbidden: "forbidden",
   not_found: "not_found",
   invalid_account_role: "forbidden",
+  invalid_application_types: "forbidden",
   application_type_mismatch: "application_type_mismatch",
   role_application_mismatch: "forbidden",
   application_locked: "application_locked",
@@ -26,9 +27,9 @@ export type DatabaseErrorLike = Pick<PostgrestError, "code" | "message"> &
 export function logServerError(context: string, error: unknown): void {
   if (error && typeof error === "object") {
     const { code, status, hint, message } = error as Record<string, unknown>;
-    console.error(`[launchpad] ${context}`, { code, status, hint, message });
+    console.error(`[mission-control] ${context}`, { code, status, hint, message });
   } else {
-    console.error(`[launchpad] ${context}`, error);
+    console.error(`[mission-control] ${context}`, error);
   }
 }
 

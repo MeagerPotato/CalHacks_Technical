@@ -160,7 +160,7 @@ describe("noticeForError", () => {
 
 describe("toSummaryItems", () => {
   const stepHref = (type: ApplicationType) => (key: string) =>
-    applicationStepHref(sectionForField(type, key) ?? "review", key);
+    applicationStepHref(type, sectionForField(type, key) ?? "review", key);
 
   it("lists errors in form order with the first message, resolved labels, and step hrefs", () => {
     const items = toSummaryItems(
@@ -170,29 +170,29 @@ describe("toSummaryItems", () => {
         notAField: ["Ignored."],
         graduationYear: ["Enter a whole number from 2000 to 2040.", "A second message."],
         school: [],
-        preferredName: ["This field is required."],
+        fullName: ["This field is required."],
       },
       stepHref("hacker"),
     );
 
     expect(items).toEqual([
       {
-        key: "preferredName",
-        label: labelFor("hacker", "preferredName"),
+        key: "fullName",
+        label: labelFor("hacker", "fullName"),
         message: "This field is required.",
-        href: "/portal/application?section=about#field-preferredName",
+        href: "/portal/application?type=hacker&section=about#field-fullName",
       },
       {
         key: "graduationYear",
         label: labelFor("hacker", "graduationYear"),
         message: "Enter a whole number from 2000 to 2040.",
-        href: "/portal/application?section=education#field-graduationYear",
+        href: "/portal/application?type=hacker&section=education#field-graduationYear",
       },
       {
         key: "codeOfConductAccepted",
         label: labelFor("hacker", "codeOfConductAccepted"),
         message: "Accept the code of conduct to submit.",
-        href: "/portal/application?section=agreements#field-codeOfConductAccepted",
+        href: "/portal/application?type=hacker&section=agreements#field-codeOfConductAccepted",
       },
     ]);
   });
@@ -203,10 +203,10 @@ describe("toSummaryItems", () => {
 
     expect(items.map((item) => item.key)).toEqual(getRequiredApplicationFieldKeys("judge"));
     expect(items[0]).toEqual({
-      key: "preferredName",
-      label: labelFor("judge", "preferredName"),
+      key: "fullName",
+      label: labelFor("judge", "fullName"),
       message: "This field is required.",
-      href: "#field-preferredName",
+      href: "#field-fullName",
     });
   });
 

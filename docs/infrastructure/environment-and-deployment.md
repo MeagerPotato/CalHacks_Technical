@@ -4,7 +4,17 @@
 
 Recorded on 2026-09-11:
 
-- **Application deadline:** 5:00 PM Pacific on September 11, 2026 (`APPLICATION_DEADLINE` in `lib/event.ts`). The portal displays it. Nothing enforces it: applicants can still save and submit after it passes.
+- **Event schedule:** the Cal Hacks 13.0 regular round, set in `EVENT_SCHEDULE` in `lib/event.ts` (updated on 2026-09-11):
+  - Applications are open now.
+  - The deadline is 11:59 PM Pacific on September 20, 2026 (`APPLICATION_DEADLINE`).
+  - Results are released September 25, 2026.
+  - The event runs October 23 to 25, 2026.
+
+  The landing page timeline and the countdowns on the landing page and the portal show these dates. Nothing enforces the deadline: applicants can still save and submit after it passes.
+- **Database migrations:** the hosted Supabase project is connected to this repository through the Supabase GitHub integration, with working directory `.` and production branch `main`.
+  - With **Deploy to production** on, each push or merge to `main` applies the new files in `supabase/migrations`.
+  - Only migrations deploy. The integration ignores the Auth and API settings in `supabase/config.toml` and the seed file.
+  - Vercel deploys `main` to Production at the same time. A failed migration therefore leaves new code running on the old schema, so check the Supabase deployment after every merge that adds a migration.
 - **Confirm email:** on in the hosted Supabase project. Applicants receive confirmation emails only after custom SMTP is configured (see [Hosted Supabase](#hosted-supabase), step 3).
 - **Origin for confirmation links:** `SITE_URL` stays unset, so links use Vercel's production URL (`VERCEL_PROJECT_PRODUCTION_URL`).
 
@@ -82,6 +92,16 @@ After changing `supabase/config.toml`, restart the stack with `npm run db:stop` 
 
 ### Local Organizer account
 
+The quickest way is the script. With the local stack running:
+
+```bash
+npm run organizer:create
+```
+
+It signs up `organizer@mission-control.test` (or the email passed after `--`) through local Supabase Auth and promotes it with `private.promote_to_organizer`. It refuses a non-local stack and an email that already has an account, and it prints a generated password once without writing it anywhere. `npm run db:reset` deletes the account, so run the script again after a reset.
+
+To do the same by hand:
+
 1. Create the account yourself. Sign up at http://localhost:3000/signup and stop at onboarding without starting an application, or use Studio → Authentication → Add user.
 2. Immediately, in Studio's SQL editor, run:
 
@@ -132,7 +152,7 @@ The repository does not create or link a hosted project. When deploying:
 
    Keep the credentials in a password manager. Never commit them.
 
-5. **Check Advisors.** **Advisors → Security** should report no issues for the Launchpad tables and functions.
+5. **Check Advisors.** **Advisors → Security** should report no issues for the app tables and functions.
 
 ## Vercel
 

@@ -10,9 +10,9 @@ import { CheckEmailNotice } from "@/components/auth/CheckEmailNotice";
 import { Button } from "@/components/ui/Button";
 import { ErrorSummary } from "@/components/ui/ErrorSummary";
 import { Field, FieldGroup } from "@/components/ui/Field";
+import { CheckboxGroup } from "@/components/ui/CheckboxGroup";
 import { Form, FormActions } from "@/components/ui/Form";
 import { LiveStatus, NoticeFromView } from "@/components/ui/Notice";
-import { RadioGroup } from "@/components/ui/RadioGroup";
 import { TextInput } from "@/components/ui/TextInput";
 import { COPY, LOCKED } from "@/content/copy";
 import { PUBLIC_ACCOUNT_ROLE_OPTIONS } from "@/lib/application-config";
@@ -22,7 +22,7 @@ import { ROUTES } from "@/lib/routes";
 import { PASSWORD_MIN_LENGTH } from "@/lib/validation/auth";
 
 const SIGNUP_FIELDS = [
-  { key: "accountRole", label: COPY.auth.signup.roleLegend },
+  { key: "applicationTypes", label: COPY.auth.signup.roleLegend },
   { key: "email", label: COPY.auth.signup.email },
   { key: "password", label: COPY.auth.signup.password },
 ] as const;
@@ -34,11 +34,15 @@ const ROLE_OPTIONS = PUBLIC_ACCOUNT_ROLE_OPTIONS.map((option) => ({
   description: COPY.auth.signup.roleDescriptions[option.value],
 }));
 
-/** Hacker or Judge signup. Shows the check-email notice when the project requires email confirmation. */
+/**
+ * Signup for a Hacker application, a Judge application, or both. Shows the check-email notice when the project requires
+ * email confirmation.
+ */
 export function SignupForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { feedback, showFeedback, clearNotice, summaryRef, focusSummaryItem } = useFormFeedback();
+  const [applicationTypes, setApplicationTypes] = useState<string[]>([]);
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
   const checkEmailHeadingRef = useRef<HTMLHeadingElement>(null);
 
@@ -80,7 +84,7 @@ export function SignupForm() {
     return <CheckEmailNotice email={confirmationEmail} signInHref={ROUTES.login} headingRef={checkEmailHeadingRef} />;
   }
 
-  const roleErrors = feedback.fieldErrors.accountRole;
+  const roleErrors = feedback.fieldErrors.applicationTypes;
 
   return (
     <Form onSubmit={handleSubmit}>
@@ -92,15 +96,18 @@ export function SignupForm() {
       />
       {feedback.notice ? <NoticeFromView view={feedback.notice} live="assertive" /> : null}
       <FieldGroup
-        id={fieldControlId("accountRole")}
+        id={fieldControlId("applicationTypes")}
         legend={COPY.auth.signup.roleLegend}
         hint={COPY.auth.signup.roleHint}
         errors={roleErrors}
+        required
       >
-        <RadioGroup
-          idPrefix={fieldControlId("accountRole")}
-          name="accountRole"
+        <CheckboxGroup
+          idPrefix={fieldControlId("applicationTypes")}
+          name="applicationTypes"
           options={ROLE_OPTIONS}
+          value={applicationTypes}
+          onValueChange={setApplicationTypes}
           invalid={Boolean(roleErrors?.length)}
         />
       </FieldGroup>

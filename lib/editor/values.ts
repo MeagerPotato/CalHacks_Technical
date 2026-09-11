@@ -9,9 +9,9 @@ import type { FieldErrors } from "@/lib/validation/errors";
 // =============================================================================
 // Editor value model (client-safe, pure).
 //
-// Controls hold UI values: strings for text, whole numbers, single choices, and link lists; string arrays for multi
-// choices; booleans for agreements. Saves send draft payloads built from those values (trimmed, normalized, null to
-// clear). Dirty checks compare payloads, so trailing spaces or checkbox order never count as unsaved changes.
+// Controls hold UI values: strings for text, whole numbers, dates, single choices, and profile links; string arrays
+// for multi choices; booleans for agreements. Saves send draft payloads built from those values (trimmed, normalized,
+// null to clear). Dirty checks compare payloads, so trailing spaces or checkbox order never count as unsaved changes.
 // =============================================================================
 
 /** The value a form control holds for one field. */
@@ -35,7 +35,6 @@ export interface DraftPatch {
 }
 
 const WHOLE_NUMBER_PATTERN = /^\d{1,9}$/;
-const LINE_BREAK = /\r?\n/;
 
 const FORM_FIELDS: Record<ApplicationType, readonly ApplicationFieldConfig[]> = {
   hacker: APPLICATION_FORMS.hacker.sections.flatMap((section) => section.fields),
@@ -78,14 +77,15 @@ function toUiValue(field: ApplicationFieldConfig, stored: unknown): UiValue {
   switch (field.kind) {
     case "short_text":
     case "long_text":
+    case "date":
     case "single_choice":
+    case "searchable_choice":
+    case "profile_link":
       return typeof stored === "string" ? stored : "";
     case "whole_number":
       return typeof stored === "number" && Number.isFinite(stored) ? String(stored) : "";
     case "multi_choice":
       return Array.isArray(stored) ? onlyStrings(stored) : [];
-    case "link_list":
-      return Array.isArray(stored) ? onlyStrings(stored).join("\n") : "";
     case "agreement":
       return stored === true;
   }
@@ -112,7 +112,9 @@ export function toUiValues(type: ApplicationType, responses: Record<string, unkn
 export function toPayloadValue(field: ApplicationFieldConfig, value: UiValue): unknown {
   switch (field.kind) {
     case "short_text":
-    case "long_text": {
+    case "long_text":
+    case "date":
+    case "profile_link": {
       if (typeof value !== "string") {
         return value;
       }
@@ -130,6 +132,7 @@ export function toPayloadValue(field: ApplicationFieldConfig, value: UiValue): u
       return WHOLE_NUMBER_PATTERN.test(trimmed) ? Number(trimmed) : value;
     }
     case "single_choice":
+    case "searchable_choice":
       return value === "" ? null : value;
     case "multi_choice": {
       if (!Array.isArray(value)) {
@@ -144,16 +147,6 @@ export function toPayloadValue(field: ApplicationFieldConfig, value: UiValue): u
         ...Array.from(selected).filter((item) => !knownValues.has(item)),
       ];
       return ordered.length === 0 ? null : ordered;
-    }
-    case "link_list": {
-      if (typeof value !== "string") {
-        return value;
-      }
-      const links = value
-        .split(LINE_BREAK)
-        .map((line) => line.trim())
-        .filter((line) => line !== "");
-      return links.length === 0 ? null : links;
     }
     case "agreement":
       return value === false ? null : value;

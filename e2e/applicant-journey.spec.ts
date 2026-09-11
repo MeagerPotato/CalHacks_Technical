@@ -27,13 +27,13 @@ test.describe("Hacker application journey", () => {
   });
 
   test("saves a draft answer that survives a reload", async ({ page }) => {
-    await page.getByLabel(fieldLabel("hacker", "preferredName")).fill("Ada Builder");
+    await page.getByLabel(fieldLabel("hacker", "fullName")).fill("Ada Builder");
     await page.getByRole("button", { name: LOCKED.editor.saveDraft }).click();
 
     await expect(editorLiveStatus(page)).toContainText(COPY.editor.announce.saved);
     await expect(page.getByTestId("save-status")).toHaveAttribute("data-state", "saved");
     await page.reload();
-    await expect(page.getByLabel(fieldLabel("hacker", "preferredName"))).toHaveValue("Ada Builder");
+    await expect(page.getByLabel(fieldLabel("hacker", "fullName"))).toHaveValue("Ada Builder");
   });
 
   test("Save & continue moves to the next section and focuses its heading", async ({ page }) => {
@@ -109,12 +109,15 @@ test.describe("Hacker application journey", () => {
     } else {
       await expect(deadlineCard).toContainText(COPY.portal.deadlineTba);
     }
+    const countdowns = page.getByTestId("countdowns");
+    await expect(countdowns.getByTestId("countdown-launch")).toBeVisible();
+    await expect(countdowns.getByTestId("countdown-landing")).toBeVisible();
 
     const readiness = page.getByTestId("launch-readiness");
     await expect(readiness.getByTestId("readiness-item-about")).toHaveAttribute("data-state", /complete|in_progress/);
     await readiness.getByTestId("readiness-item-education").getByRole("link").click();
 
-    await expect(page).toHaveURL(/\/portal\/application\?section=education$/);
+    await expect(page).toHaveURL(/\/portal\/application\?type=hacker&section=education$/);
     await expect(page.locator("#section-heading-education")).toBeVisible();
   });
 
@@ -138,7 +141,7 @@ test.describe("Hacker application journey", () => {
     await page.goto("/portal/application?section=review");
     await page.getByRole("button", { name: LOCKED.review.submit }).click();
 
-    await expect(page).toHaveURL(/\/portal\/mission$/);
+    await expect(page).toHaveURL(/\/portal\/mission\?type=hacker$/);
     await expect(page.getByRole("heading", { level: 1, name: LOCKED.mission.cruising })).toBeVisible();
     await expect(page.getByTestId("mission-leg-launch")).toHaveAttribute("data-state", "complete");
     await expect(page.getByTestId("mission-leg-launch").locator("time[datetime]")).toHaveCount(1);

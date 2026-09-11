@@ -10,7 +10,7 @@ import { createAccount, createOrganizer, seedApplication } from "./support/accou
 import { expectPathAndQuery, signInViaUi } from "./support/ui";
 
 test("signed-out visitors are sent to sign in with their destination preserved", async ({ page }) => {
-  for (const path of [ROUTES.portal, ROUTES.onboarding, `${ROUTES.portalMission}?x=1`]) {
+  for (const path of [ROUTES.portal, ROUTES.onboarding, `${ROUTES.portalMission}?x=1`, ROUTES.organizer]) {
     await page.goto(path);
     await expectPathAndQuery(page, `${ROUTES.login}?next=${encodeURIComponent(path)}`);
   }
@@ -31,7 +31,7 @@ test("Organizers are kept out of the applicant portal", async ({ page }) => {
 test("applicants never see organizer pages or another applicant's answers", async ({ page }) => {
   const secretName = `Secret ${randomUUID().slice(0, 8)}`;
   const other = await createAccount("access-other", { role: "hacker" });
-  await seedApplication(other, "hacker", { ...validHackerResponses, preferredName: secretName }, { submit: true });
+  await seedApplication(other, "hacker", { ...validHackerResponses, fullName: secretName }, { submit: true });
 
   const user = await createAccount("access-user", { role: "hacker" });
   await seedApplication(user, "hacker", partialHackerResponses);
@@ -42,11 +42,13 @@ test("applicants never see organizer pages or another applicant's answers", asyn
     await expect(page.locator("body")).not.toContainText(secretName);
   }
 
-  // Organizer pages arrive in Phase 3. Until then this is a 404; afterwards applicants are redirected away.
-  const response = await page.goto(ROUTES.organizer);
-  const pathname = new URL(page.url()).pathname;
-  expect(response?.status() === 404 || !pathname.startsWith(ROUTES.organizer)).toBe(true);
-  await expect(page.locator("body")).not.toContainText(secretName);
+  // Applicants are redirected from every organizer page to their portal, and no organizer data reaches the page.
+  for (const path of [ROUTES.organizer, ROUTES.organizerApplications]) {
+    const response = await page.goto(path);
+    expect(response?.status()).toBe(200);
+    await expect.poll(() => new URL(page.url()).pathname).toBe(ROUTES.portal);
+    await expect(page.locator("body")).not.toContainText(secretName);
+  }
 });
 
 test("the development gallery is not served in production", async ({ page }) => {

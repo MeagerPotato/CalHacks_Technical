@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import { formatApplicantReference, splitIdentityResponses } from "@/lib/domain/applicant-identity";
 import {
+  APPLICATION_TYPE_PARAM,
   ROUTES,
   getHomeRouteForRole,
   getSafeRedirectPath,
   isProtectedPath,
   organizerApplicationRoute,
+  portalApplicationRoute,
+  portalMissionRoute,
+  portalRoute,
+  resolveApplicationType,
 } from "@/lib/routes";
 
 describe("getSafeRedirectPath", () => {
@@ -54,6 +59,37 @@ describe("route helpers", () => {
   it("encodes application ids in organizer routes", () => {
     expect(organizerApplicationRoute("a/b")).toBe("/organizer/applications/a%2Fb");
   });
+
+  it("names the application in every portal route", () => {
+    expect(APPLICATION_TYPE_PARAM).toBe("type");
+    expect(portalRoute("hacker")).toBe("/portal?type=hacker");
+    expect(portalApplicationRoute("judge")).toBe("/portal/application?type=judge");
+    expect(portalMissionRoute("judge")).toBe("/portal/mission?type=judge");
+  });
+});
+
+describe("resolveApplicationType", () => {
+  it("shows the first application when the URL names none", () => {
+    expect(resolveApplicationType(["hacker", "judge"], undefined)).toEqual({ type: "hacker", canonical: true });
+    expect(resolveApplicationType(["judge"], undefined)).toEqual({ type: "judge", canonical: true });
+  });
+
+  it("shows a named application the account holds", () => {
+    expect(resolveApplicationType(["hacker", "judge"], "judge")).toEqual({ type: "judge", canonical: true });
+    expect(resolveApplicationType(["hacker", "judge"], "hacker")).toEqual({ type: "hacker", canonical: true });
+  });
+
+  it.each([["judge"], ["organizer"], [""], ["Hacker"], ["constructor"], ["__proto__"], [["hacker", "judge"]], [42]])(
+    "falls back to the first application, marked non-canonical, for %j",
+    (raw) => {
+      expect(resolveApplicationType(["hacker"], raw)).toEqual({ type: "hacker", canonical: false });
+    },
+  );
+
+  it("returns null when the account applies for nothing", () => {
+    expect(resolveApplicationType([], undefined)).toBeNull();
+    expect(resolveApplicationType([], "hacker")).toBeNull();
+  });
 });
 
 describe("applicant identity", () => {
@@ -64,16 +100,22 @@ describe("applicant identity", () => {
 
   it("separates identifying answers from narrative answers", () => {
     const { identity, narrative } = splitIdentityResponses("judge", {
-      preferredName: "Test Judge",
+      fullName: "Test Judge",
+      birthdate: "1990-02-03",
+      countryOfResidence: "CA",
+      cityOfResidence: "Toronto",
       company: "Example Labs",
-      links: ["https://example.com"],
+      githubUrl: "https://github.com/test-judge",
       bio: "Engineer",
       roleTitle: "Staff Engineer",
     });
     expect(identity).toEqual({
-      preferredName: "Test Judge",
+      fullName: "Test Judge",
+      birthdate: "1990-02-03",
+      countryOfResidence: "CA",
+      cityOfResidence: "Toronto",
       company: "Example Labs",
-      links: ["https://example.com"],
+      githubUrl: "https://github.com/test-judge",
     });
     expect(narrative).toEqual({ bio: "Engineer", roleTitle: "Staff Engineer" });
   });

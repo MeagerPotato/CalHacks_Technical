@@ -1,5 +1,5 @@
 import type { ApplicationType } from "@/lib/domain/enums";
-import { ROUTES } from "@/lib/routes";
+import { portalApplicationRoute } from "@/lib/routes";
 import { APPLICATION_SECTIONS, type ApplicationSectionId } from "@/lib/validation/application";
 import type { ApplicationCompletion } from "@/lib/validation/completion";
 
@@ -73,9 +73,9 @@ export function fieldCounterId(key: string): string {
   return `${fieldControlId(key)}-counter`;
 }
 
-/** URL of an editor step, `/portal/application?section=<step>`, plus `#field-<key>` to jump to a field. */
-export function applicationStepHref(step: EditorStep, fieldKey?: string): string {
-  const href = `${ROUTES.portalApplication}?section=${encodeURIComponent(step)}`;
+/** URL of an editor step, `/portal/application?type=<type>&section=<step>`, plus `#field-<key>` to jump to a field. */
+export function applicationStepHref(type: ApplicationType, step: EditorStep, fieldKey?: string): string {
+  const href = `${portalApplicationRoute(type)}&section=${encodeURIComponent(step)}`;
   return fieldKey ? `${href}#${fieldControlId(fieldKey)}` : href;
 }
 

@@ -1,25 +1,50 @@
 import { describe, expect, it } from "vitest";
 
 import { profileUpdateSchema, signInSchema, signUpSchema } from "@/lib/validation/auth";
+import { toFieldErrors } from "@/lib/validation/errors";
 import { toPlainInput } from "@/lib/validation/form-data";
 
 const validSignUp = {
   email: "  New.Applicant@Example.com ",
   password: "correct-horse-battery",
-  accountRole: "hacker",
+  applicationTypes: ["hacker"],
 };
 
 describe("signUpSchema", () => {
-  it("accepts hacker and judge and normalizes the email", () => {
-    const hacker = signUpSchema.parse(validSignUp);
-    expect(hacker).toMatchObject({ email: "new.applicant@example.com", accountRole: "hacker" });
-    expect(signUpSchema.parse({ ...validSignUp, accountRole: "judge" }).accountRole).toBe("judge");
+  it("accepts Hacker, Judge, or both, in form order, and normalizes the email", () => {
+    expect(signUpSchema.parse(validSignUp)).toMatchObject({
+      email: "new.applicant@example.com",
+      applicationTypes: ["hacker"],
+    });
+    expect(signUpSchema.parse({ ...validSignUp, applicationTypes: ["judge"] }).applicationTypes).toEqual(["judge"]);
+    expect(signUpSchema.parse({ ...validSignUp, applicationTypes: ["judge", "hacker"] }).applicationTypes).toEqual([
+      "hacker",
+      "judge",
+    ]);
   });
 
-  it("never accepts organizer or any other role", () => {
-    for (const accountRole of ["organizer", "admin", "Organizer", "", undefined, null]) {
-      expect(signUpSchema.safeParse({ ...validSignUp, accountRole }).success).toBe(false);
-    }
+  it("reads one checked checkbox, which FormData sends as a plain string", () => {
+    expect(signUpSchema.parse({ ...validSignUp, applicationTypes: "judge" }).applicationTypes).toEqual(["judge"]);
+  });
+
+  it.each([
+    ["organizer", ["organizer"]],
+    ["organizer beside a real type", ["hacker", "organizer"]],
+    ["organizer as a string", "organizer"],
+    ["an unknown type", ["admin"]],
+    ["the wrong casing", ["Hacker"]],
+    ["a duplicate", ["hacker", "hacker"]],
+    ["more than two", ["hacker", "judge", "hacker"]],
+    ["no choice", []],
+    ["a blank string", ""],
+    ["a missing value", undefined],
+    ["null", null],
+    ["an object", { hacker: true }],
+    ["a number", [1]],
+  ])("rejects %s, reporting it on applicationTypes", (_case, applicationTypes) => {
+    const result = signUpSchema.safeParse({ ...validSignUp, applicationTypes });
+    expect(result.success).toBe(false);
+    expect(Object.keys(toFieldErrors(result.error!))).toEqual(["applicationTypes"]);
   });
 
   it("enforces password length", () => {
@@ -59,13 +84,18 @@ describe("auth FormData input", () => {
     formData.append("$ACTION_REF_1", "");
     formData.append("email", "  Maya@Example.com ");
     formData.append("password", "correct-horse-battery");
-    formData.append("accountRole", "judge");
+    formData.append("applicationTypes", "judge");
+    formData.append("applicationTypes", "hacker");
 
     const signIn = signInSchema.parse(toPlainInput(formData));
     const signUp = signUpSchema.parse(toPlainInput(formData));
 
     expect(signIn).toEqual({ email: "maya@example.com", password: "correct-horse-battery" });
-    expect(signUp).toEqual({ email: "maya@example.com", password: "correct-horse-battery", accountRole: "judge" });
+    expect(signUp).toEqual({
+      email: "maya@example.com",
+      password: "correct-horse-battery",
+      applicationTypes: ["hacker", "judge"],
+    });
     for (const output of [signIn, signUp]) {
       expect(Object.keys(output).filter((key) => key.startsWith("$ACTION"))).toEqual([]);
     }

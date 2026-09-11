@@ -8,14 +8,14 @@ import { createAccount, newPassword, queryRows, seedApplication, uniqueEmail } f
 import { expectPathAndQuery, signInViaUi, signOutViaUi } from "./support/ui";
 
 test.describe("authentication", () => {
-  test("public signup offers only Hacker and Judge and rejects a tampered Organizer role", async ({ page }) => {
+  test("public signup offers only Hacker and Judge and rejects a tampered Organizer choice", async ({ page }) => {
     await page.goto(ROUTES.signup);
-    await expect(page.getByRole("radio")).toHaveCount(2);
-    await expect(page.getByRole("radio", { name: ACCOUNT_ROLE_LABELS.hacker })).toBeVisible();
-    await expect(page.getByRole("radio", { name: ACCOUNT_ROLE_LABELS.judge })).toBeVisible();
+    await expect(page.getByRole("checkbox")).toHaveCount(2);
+    await expect(page.getByRole("checkbox", { name: ACCOUNT_ROLE_LABELS.hacker })).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: ACCOUNT_ROLE_LABELS.judge })).toBeVisible();
 
     const email = uniqueEmail("tampered-role");
-    await page.getByRole("radio", { name: ACCOUNT_ROLE_LABELS.hacker }).evaluate((element) => {
+    await page.getByRole("checkbox", { name: ACCOUNT_ROLE_LABELS.hacker }).evaluate((element) => {
       const input = element as HTMLInputElement;
       input.value = "organizer";
       input.checked = true;
@@ -29,9 +29,22 @@ test.describe("authentication", () => {
     expect(await queryRows("select 1 from auth.users where email = $1", [email])).toHaveLength(0);
   });
 
+  test("signup without choosing an application explains what is missing", async ({ page }) => {
+    const email = uniqueEmail("no-choice");
+    await page.goto(ROUTES.signup);
+    await page.getByLabel(COPY.auth.signup.email).fill(email);
+    await page.getByLabel(COPY.auth.signup.password).fill(newPassword());
+    await page.getByRole("button", { name: LOCKED.auth.createAccount }).click();
+
+    const summary = page.getByTestId("error-summary");
+    await expect(summary).toBeFocused();
+    await expect(summary.getByRole("link", { name: new RegExp(COPY.auth.signup.roleLegend) })).toBeVisible();
+    expect(await queryRows("select 1 from auth.users where email = $1", [email])).toHaveLength(0);
+  });
+
   test("a new Hacker signs up, finishes onboarding, and starts the application", async ({ page }) => {
     await page.goto(ROUTES.signup);
-    await page.getByRole("radio", { name: ACCOUNT_ROLE_LABELS.hacker }).check();
+    await page.getByRole("checkbox", { name: ACCOUNT_ROLE_LABELS.hacker }).check();
     await page.getByLabel(COPY.auth.signup.email).fill(uniqueEmail("signup-hacker"));
     await page.getByLabel(COPY.auth.signup.password).fill(newPassword());
     await page.getByRole("button", { name: LOCKED.auth.createAccount }).click();
@@ -41,7 +54,7 @@ test.describe("authentication", () => {
     await page.getByLabel(COPY.onboarding.displayName).fill("Signup Hacker");
     await page.getByRole("button", { name: COPY.onboarding.submit }).click();
 
-    await expect(page).toHaveURL(/\/portal\/application\?section=about$/);
+    await expect(page).toHaveURL(/\/portal\/application\?type=hacker&section=about$/);
     await expect(page.locator("#section-heading-about")).toBeVisible();
   });
 

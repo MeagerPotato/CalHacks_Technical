@@ -34,6 +34,7 @@ const SEMANTIC_TOKENS = [
   "--color-focus",
   "--color-focus-on-dark",
   "--color-danger-edge",
+  "--color-required",
 ];
 
 const SHAPE_AND_MOTION_TOKENS = [
@@ -54,6 +55,8 @@ const TEXT_PAIRS = [
   ["--color-ink", "--color-highlight"],
   ["--color-ink", "--color-accent"],
   ["--color-on-dark", "--color-dark"],
+  ["--color-required", "--color-page"],
+  ["--color-required", "--color-surface"],
 ] as const;
 
 const NON_TEXT_PAIRS = [
@@ -238,6 +241,11 @@ describe("design tokens", () => {
   it("keeps the motion constants equal to the CSS duration tokens", () => {
     expect(toMilliseconds(resolveValue("--duration-liftoff"))).toBe(LIFTOFF_DURATION_MS);
     expect(toMilliseconds(resolveValue("--duration-landing"))).toBe(LANDING_DURATION_MS);
+  });
+
+  it("leaves Tailwind's infinite spin in place for loading spinners", () => {
+    // A spinner marks work that is still running. A finite one stops mid-save, and the page looks frozen.
+    expect(CSS).not.toMatch(/--animate-spin\s*:/);
   });
 });
 

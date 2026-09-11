@@ -20,12 +20,20 @@ After Astra finishes the frontend, Claude may be handed a separate deployment-on
 > - **Astra's Phase 2 work is creative only:** original illustrations and art replacing the `components/art/` placeholders, motion choreography beyond the baseline, visual polish within the frozen DOM and contrast rules, the voice of `COPY`, `FIELD_COPY`, and `SECTION_COPY` in `content/copy.ts`, and final look-and-feel QA.
 >
 > See `CLAUDE.md` and `docs/frontend/astra-handoff.md`. Phase 3 ownership is unchanged until the user decides otherwise.
+>
+> **Round 2 amendment (2026-09-11).** The user renamed the product and changed its scope. Where this plan disagrees, this amendment wins.
+>
+> - **Name.** The product is **CalHacks Mission Control** (`LOCKED.brand`). The organizer dashboard keeps its Mission Control heading.
+> - **Schedule.** The site follows the published Cal Hacks 13.0 regular round: applications due September 20, 2026 at 11:59 PM Pacific, decisions released September 25, and the event from October 23 to 25, 2026 at the Palace of Fine Arts in San Francisco. The landing page shows a schedule timeline, and the landing page and portal show live countdowns to the deadline and to the event.
+> - **Accounts.** Signup asks which applications to start: Hacker, Judge, or both. An account holds at most one application of each type, and the portal switches between them when it holds two.
+> - **About you.** Both forms share one About you section: full name, birthdate, country and city of residence, optional LinkedIn, GitHub, and Devpost profiles, and an optional short biography. It replaces preferred name, location, and relevant links.
+> - **Ownership.** Claude builds these changes and Phase 3 (the organizer pages) with baseline styling. Astra's work stays design only: art, motion, visual polish, and copy voice, per `docs/frontend/astra-handoff.md`.
 
 ## 1. Product thesis
 
-Build a small but convincing hackathon operating system called **Launchpad**.
+Build a small but convincing hackathon operating system called **CalHacks Mission Control**.
 
-Launchpad gives applicants a calm, guided way to submit an application and gives organizers a fast, fair way to process a large review queue. Its cartoony model-rocketry world turns applying into a mission: applicants assemble a rocket, submission is launch, review is the cruise to a destination planet, and the released decision is landing. The metaphors add personality without obscuring standard product language.
+CalHacks Mission Control gives applicants a calm, guided way to submit an application and gives organizers a fast, fair way to process a large review queue. Its cartoony model-rocketry world turns applying into a mission: applicants assemble a rocket, submission is launch, review is the cruise to a destination planet, and the released decision is landing. The metaphors add personality without obscuring standard product language.
 
 The project should optimize for three things:
 
@@ -403,7 +411,7 @@ Claude should not create the `components/` tree or the product routes during Pha
 
 ### Brand concept
 
-**Launchpad — Your ideas are cleared for takeoff.**
+**CalHacks Mission Control — Your ideas are cleared for takeoff.**
 
 Visual tone: optimistic, handcrafted, cartoony, and slightly nostalgic. Think model-rocket workshop, graph-paper plans, painted cardboard fins, mission patches, and friendly mission control—not sleek NASA realism or a dark sci-fi dashboard.
 
@@ -467,7 +475,7 @@ Keep shapes bold and readable at dashboard size, with slightly imperfect ink out
 
 ### Landing page
 
-- Compact nav: Launchpad mark, `Sign in`, `Apply now`.
+- Compact nav: CalHacks Mission Control mark, `Sign in`, `Apply now`.
 - Hero copy: “Build what comes next.” / “Your Cal Hacks mission starts here.”
 - Cartoony model-rocket workshop illustration with a trajectory line leading toward the portal card.
 - Three small promise cards: Assemble, Launch, Explore.
@@ -673,7 +681,7 @@ Astra owns:
 
 Aim for 2:35–2:50.
 
-1. **0:00–0:15 — thesis:** “Launchpad is a miniature Cal Hacks application platform focused on a guided applicant experience and fast, fair organizer review.”
+1. **0:00–0:15 — thesis:** “CalHacks Mission Control is a miniature Cal Hacks application platform focused on a guided applicant experience and fast, fair organizer review.”
 2. **0:15–0:55 — applicant:** sign in to the partial draft, show role-specific form, completion checklist, saved state, review, and submit.
 3. **0:55–1:10 — status:** show the submitted dashboard/status timeline.
 4. **1:10–1:35 — organizer overview:** sign in as organizer, show metrics, filters, statuses, and unreviewed queue.

@@ -12,7 +12,7 @@ import { SubmittedApplicationView } from "@/components/application/SubmittedAppl
 import { EngineerArt } from "@/components/art/EngineerArt";
 import { HeroArt } from "@/components/art/HeroArt";
 import { LandingMoment } from "@/components/art/LandingMoment";
-import { LaunchpadMark } from "@/components/art/LaunchpadMark";
+import { BrandMark } from "@/components/art/BrandMark";
 import { LiftoffMoment } from "@/components/art/LiftoffMoment";
 import { RocketArt } from "@/components/art/RocketArt";
 import { Sticker } from "@/components/art/Sticker";
@@ -22,6 +22,8 @@ import { MissionTracker } from "@/components/mission/MissionTracker";
 import { LaunchReadiness } from "@/components/portal/LaunchReadiness";
 import { PortalDraftDashboard } from "@/components/portal/PortalDraftDashboard";
 import { PortalSubmittedDashboard } from "@/components/portal/PortalSubmittedDashboard";
+import { CountdownPanel } from "@/components/schedule/CountdownPanel";
+import { MissionTimeline } from "@/components/schedule/MissionTimeline";
 import { AppLink } from "@/components/ui/AppLink";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -43,8 +45,12 @@ import {
   HACKER_SKILL_OPTIONS,
 } from "@/lib/application-config";
 import { APPLICATION_STATUSES } from "@/lib/domain/enums";
+import { EVENT_SCHEDULE } from "@/lib/event";
 import { ROUTES } from "@/lib/routes";
+import { toScheduleViews } from "@/lib/view-models/schedule";
 
+import { LiveCountdowns } from "../../_components/LiveCountdowns";
+import { ComboboxExample } from "./_components/ComboboxExample";
 import { MotionReplay } from "./_components/MotionReplay";
 import { PendingExample } from "./_components/PendingExample";
 import {
@@ -55,6 +61,7 @@ import {
   reviewAnswerSections,
   sampleTimestamp,
   saveStatusViews,
+  scheduleExamples,
   sectionNavItems,
   submittedAnswerSections,
   summaryItems,
@@ -97,9 +104,20 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
   const params = await searchParams;
   const portal = pickVariant(params.portal, portalViews, "in-progress");
   const mission = pickVariant(params.mission, missionViews, "accepted");
+  const { countdowns: liveCountdowns } = toScheduleViews(EVENT_SCHEDULE);
 
   return (
     <main id="main" tabIndex={-1}>
+      <GallerySection
+        id="gallery-organizer-link"
+        title="Organizer pages"
+        description="The organizer dashboard, applications table, and review workspace have their own gallery."
+      >
+        <AppLink href={`${GALLERY_PATH}/organizer`} variant="secondary">
+          Open the organizer gallery
+        </AppLink>
+      </GallerySection>
+
       <GallerySection
         id="gallery-primitives"
         title="Buttons, links, badges, progress, timestamps"
@@ -120,7 +138,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
           {LOCKED.landing.signIn}
         </AppLink>
         <AppLink href={ROUTES.home} variant="plain">
-          <LaunchpadMark />
+          <BrandMark />
         </AppLink>
         <AppLink href="https://example.com" newTab>
           Example external link
@@ -145,8 +163,12 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
         <Timestamp value={null} fallback={COPY.portal.deadlineTba} />
       </GallerySection>
 
-      <GallerySection id="gallery-fields" title="Form fields" description="Hints, counters, errors, and choice limits.">
-        <Field id="gallery-field-name" label="Preferred name" hint={COPY.editor.hints.maxCharacters(80)} required>
+      <GallerySection
+        id="gallery-fields"
+        title="Form fields"
+        description="Required asterisks, hints, counters, errors, choice limits, and the country picker."
+      >
+        <Field id="gallery-field-name" label="Full name" hint={COPY.editor.hints.maxCharacters(120)} required>
           {(control) => (
             <TextInput
               id={control.id}
@@ -157,6 +179,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
             />
           )}
         </Field>
+        <ComboboxExample />
         <Field
           id="gallery-field-bio"
           label="Short biography"
@@ -226,7 +249,7 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
       </GallerySection>
 
       <GallerySection id="gallery-art" title="Art slots" description="Neutral placeholders; replacements keep these props.">
-        <LaunchpadMark />
+        <BrandMark />
         <HeroArt />
         <EngineerArt variant="landing" />
         <EngineerArt variant="dashboard" />
@@ -258,6 +281,32 @@ export default async function GalleryPage({ searchParams }: PageProps<"/dev/gall
           <LaunchReadiness items={readinessItems} headingLevel={3} headingId="gallery-readiness-title" />
         </MotionReplay>
       </GallerySection>
+
+      <GallerySection
+        id="gallery-schedule"
+        title="Mission clock"
+        description="The live countdowns as the landing page and the portal show them. Pause stops both."
+      >
+        {liveCountdowns ? <LiveCountdowns view={liveCountdowns} /> : null}
+      </GallerySection>
+      {scheduleExamples.map((example) => (
+        <GallerySection
+          key={example.id}
+          id={`gallery-schedule-${example.id}`}
+          title={`Schedule: ${example.label}`}
+          description="The timeline and a paused countdown panel at this moment."
+        >
+          <MissionTimeline view={example.timeline} headingId={`gallery-timeline-${example.id}`} />
+          {example.countdowns ? (
+            <CountdownPanel
+              view={example.countdowns}
+              readings={example.readings}
+              paused
+              headingId={`gallery-countdowns-${example.id}`}
+            />
+          ) : null}
+        </GallerySection>
+      ))}
 
       <GallerySection id="gallery-portal" title="Portal dashboard" description="Choose a state.">
         {portalViews.map((variant) => (

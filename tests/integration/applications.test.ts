@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { createApplication, saveApplication, submitApplication } from "@/app/actions/applications";
-import { getMyApplication } from "@/lib/data/applications";
+import { createApplication, createApplications, saveApplication, submitApplication } from "@/app/actions/applications";
+import { getMyApplication, getMyApplications } from "@/lib/data/applications";
+import type { ApplicationType } from "@/lib/domain/enums";
 
 import { validHackerResponses, validJudgeResponses } from "../fixtures/applications";
 import {
@@ -81,6 +82,72 @@ describe("createApplication action", () => {
   });
 });
 
+describe("createApplications action", () => {
+  it("creates a draft for each application type the account applies for, and each one saves and submits alone", async () => {
+    const applicant = await signUpTestUser({ label: "both", types: ["judge", "hacker"] });
+    actAs(applicant);
+
+    const created = expectOk(await createApplications());
+    const ids = created.map((application) => application.id);
+
+    expect(created.map((application) => [application.type, application.status])).toEqual([
+      ["hacker", "draft"],
+      ["judge", "draft"],
+    ]);
+    expect(created[0].applicantReference).toMatch(/^H-\d+$/);
+    expect(created[1].applicantReference).toMatch(/^J-\d+$/);
+
+    // Idempotent, and the single-type action returns the same drafts.
+    expect(expectOk(await createApplications()).map((application) => application.id)).toEqual(ids);
+    expect(expectOk(await createApplication("judge")).id).toBe(ids[1]);
+    expect(expectOk(await createApplication()).id).toBe(ids[0]);
+
+    expect((await getMyApplications()).map((application) => application.id)).toEqual(ids);
+    expect((await getMyApplication("judge"))?.id).toBe(ids[1]);
+    expect((await getMyApplication())?.id).toBe(ids[0]);
+
+    expectOk(await saveApplication(ids[1], validJudgeResponses));
+    expect(expectOk(await submitApplication(ids[1]))).toMatchObject({ type: "judge", status: "submitted" });
+    expect(await getMyApplication("hacker")).toMatchObject({ status: "draft", responses: {} });
+
+    const rows = await queryRows<{ type: string }>(
+      "select application_type::text as type from public.applications where user_id = $1 order by application_type",
+      [applicant.userId],
+    );
+    expect(rows).toEqual([{ type: "hacker" }, { type: "judge" }]);
+  });
+
+  it("creates only the one application of a single-type account", async () => {
+    const judge = await signUpTestUser({ label: "one-type", types: ["judge"] });
+    actAs(judge);
+
+    expect(expectOk(await createApplications()).map((application) => application.type)).toEqual(["judge"]);
+    expectFailure(await createApplication("hacker"), "application_type_mismatch");
+    expect(await getMyApplication("hacker")).toBeNull();
+  });
+
+  it("allows one application of each type through the Data API", async () => {
+    const applicant = await signUpTestUser({ label: "one-per-type", types: ["hacker", "judge"] });
+    const insert = (type: ApplicationType) =>
+      applicant.client.from("applications").insert({ user_id: applicant.userId, application_type: type }).select("id");
+
+    expect((await insert("hacker")).error).toBeNull();
+    expect((await insert("judge")).error).toBeNull();
+    expect((await insert("hacker")).error?.code).toBe("23505");
+    expect((await insert("judge")).error?.code).toBe("23505");
+  });
+
+  it("requires a signed-in Hacker or Judge", async () => {
+    actAs(createTestClient());
+    expectFailure(await createApplications(), "unauthenticated");
+    await expect(getMyApplications()).rejects.toMatchObject(redirectError());
+
+    actAs(await createOrganizer("create-many-organizer"));
+    expectFailure(await createApplications(), "forbidden");
+    await expect(getMyApplications()).rejects.toMatchObject(redirectError());
+  });
+});
+
 // Completion gate 2: an applicant can save and submit only their own application.
 describe("saveApplication action", () => {
   it("merges partial drafts and computes completion on the server", async () => {
@@ -90,7 +157,7 @@ describe("saveApplication action", () => {
 
     const first = expectOk(
       await saveApplication(id, {
-        preferredName: "  Draft Judge  ",
+        fullName: "  Draft Judge  ",
         yearsExperience: 4,
         expertiseAreas: ["web"],
         // Not part of the draft contract; ignored rather than trusted.
@@ -99,14 +166,14 @@ describe("saveApplication action", () => {
       }),
     );
 
-    expect(first.responses).toEqual({ preferredName: "Draft Judge", yearsExperience: 4, expertiseAreas: ["web"] });
+    expect(first.responses).toEqual({ fullName: "Draft Judge", yearsExperience: 4, expertiseAreas: ["web"] });
     expect(first).toMatchObject({ status: "draft", isEditable: true, launchedAt: null });
     expect(first.completionPercent).toBe(first.completion.percent);
     expect(first.completionPercent).toBeGreaterThan(0);
     expect(first.completionPercent).toBeLessThan(100);
 
-    const second = expectOk(await saveApplication(id, { location: "Remote", preferredName: null, bio: "   " }));
-    const expectedResponses = { location: "Remote", yearsExperience: 4, expertiseAreas: ["web"] };
+    const second = expectOk(await saveApplication(id, { cityOfResidence: "Toronto", fullName: null, bio: "   " }));
+    const expectedResponses = { cityOfResidence: "Toronto", yearsExperience: 4, expertiseAreas: ["web"] };
     expect(second.responses).toEqual(expectedResponses);
 
     const stored = await storedApplication(id);
@@ -127,13 +194,21 @@ describe("saveApplication action", () => {
       await saveApplication(id, {
         graduationYear: 1900,
         skills: ["web", "not-a-skill"],
-        links: "https://example.com",
+        birthdate: "2006-02-30",
+        countryOfResidence: "XX",
+        githubUrl: "https://example.com/test-hacker",
         unknownField: "ignored",
       }),
       "validation_failed",
     );
 
-    expect(Object.keys(error.fieldErrors ?? {}).sort()).toEqual(["graduationYear", "links", "skills"]);
+    expect(Object.keys(error.fieldErrors ?? {}).sort()).toEqual([
+      "birthdate",
+      "countryOfResidence",
+      "githubUrl",
+      "graduationYear",
+      "skills",
+    ]);
     expectFailure(await saveApplication(id, "not an object"), "validation_failed");
     expect((await storedApplication(id))?.responses).toEqual({});
   });
@@ -143,22 +218,22 @@ describe("saveApplication action", () => {
     const intruder = await signUpTestUser({ label: "intruder", role: "judge" });
     actAs(owner);
     const { id } = expectOk(await createApplication());
-    expectOk(await saveApplication(id, { preferredName: "Owner" }));
+    expectOk(await saveApplication(id, { fullName: "Owner" }));
 
     actAs(intruder);
-    expectFailure(await saveApplication(id, { preferredName: "Intruder" }), "not_found");
+    expectFailure(await saveApplication(id, { fullName: "Intruder" }), "not_found");
     expectFailure(await submitApplication(id), "not_found");
 
     const read = await intruder.client.from("applications").select("id").eq("id", id);
     expect(read.data).toEqual([]);
     const write = await intruder.client
       .from("applications")
-      .update({ responses: { preferredName: "Intruder" } })
+      .update({ responses: { fullName: "Intruder" } })
       .eq("id", id)
       .select("id");
     expect(write.data).toEqual([]);
 
-    expect(await storedApplication(id)).toMatchObject({ status: "draft", responses: { preferredName: "Owner" } });
+    expect(await storedApplication(id)).toMatchObject({ status: "draft", responses: { fullName: "Owner" } });
   });
 
   it("keeps every answer when saves overlap", async () => {
@@ -167,8 +242,8 @@ describe("saveApplication action", () => {
     const { id } = expectOk(await createApplication());
 
     const results = await Promise.all([
-      saveApplication(id, { preferredName: "Overlap" }),
-      saveApplication(id, { location: "Remote" }),
+      saveApplication(id, { fullName: "Overlap" }),
+      saveApplication(id, { cityOfResidence: "Oakland" }),
       saveApplication(id, { major: "Mathematics" }),
     ]);
     for (const result of results) {
@@ -176,8 +251,8 @@ describe("saveApplication action", () => {
     }
 
     expect((await storedApplication(id))?.responses).toEqual({
-      preferredName: "Overlap",
-      location: "Remote",
+      fullName: "Overlap",
+      cityOfResidence: "Oakland",
       major: "Mathematics",
     });
   });
@@ -189,13 +264,16 @@ describe("submitApplication action", () => {
     const hacker = await signUpTestUser({ label: "incomplete", role: "hacker" });
     actAs(hacker);
     const { id } = expectOk(await createApplication());
-    expectOk(await saveApplication(id, { preferredName: "Partial" }));
+    expectOk(await saveApplication(id, { fullName: "Partial" }));
 
     const error = expectFailure(await submitApplication(id), "application_incomplete");
 
-    expect(error.fieldErrors).toHaveProperty("bio");
+    expect(error.fieldErrors).toHaveProperty("birthdate");
     expect(error.fieldErrors).toHaveProperty("codeOfConductAccepted");
-    expect(error.fieldErrors).not.toHaveProperty("preferredName");
+    expect(error.fieldErrors).not.toHaveProperty("fullName");
+    // Optional answers are never reported as missing.
+    expect(error.fieldErrors).not.toHaveProperty("bio");
+    expect(error.fieldErrors).not.toHaveProperty("githubUrl");
     expect((await storedApplication(id))?.status).toBe("draft");
   });
 
@@ -284,10 +362,16 @@ describe("submitApplication action", () => {
       .select("id");
     expect(junkDraft.error?.code).toBe("23514");
 
+    // Profile links are checked in drafts too, so an unsafe or impossible answer is never stored.
+    for (const responses of [{ githubUrl: "javascript:alert(1)" }, { birthdate: "2006-02-30" }, { countryOfResidence: "XX" }]) {
+      const junkAnswer = await hacker.client.from("applications").update({ responses }).eq("id", id).select("id");
+      expect(junkAnswer.error?.code, Object.keys(responses)[0]).toBe("23514");
+    }
+
     // A draft may hold blank or unfinished answers, but submitting them is refused.
     const unfinished = await hacker.client
       .from("applications")
-      .update({ responses: { ...validHackerResponses, bio: "\t", links: ["javascript:alert(1)"] } })
+      .update({ responses: { ...validHackerResponses, proudProject: "\t" } })
       .eq("id", id)
       .select("id");
     expect(unfinished.error).toBeNull();

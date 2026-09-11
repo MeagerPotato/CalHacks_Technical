@@ -34,10 +34,14 @@ export function newPassword(): string {
   return `pw-${randomUUID()}`;
 }
 
-/** Signs up through Supabase Auth directly. Omitting the role exercises the database default. */
+/**
+ * Signs up through Supabase Auth directly. `types` sends `application_types` metadata, as the app does; `role` sends
+ * the legacy single `account_role`. Omitting both exercises the database default.
+ */
 export async function signUpTestUser(options: {
   label: string;
   role?: PublicAccountRole;
+  types?: readonly ApplicationType[];
   displayName?: string;
 }): Promise<TestUser> {
   const client = createTestClient();
@@ -49,6 +53,7 @@ export async function signUpTestUser(options: {
     password,
     options: {
       data: {
+        ...(options.types ? { application_types: options.types } : {}),
         ...(options.role ? { account_role: options.role } : {}),
         ...(options.displayName ? { display_name: options.displayName } : {}),
       },

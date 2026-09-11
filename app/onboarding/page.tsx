@@ -4,24 +4,26 @@ import { redirect } from "next/navigation";
 import { SignOutButton } from "@/app/_components/SignOutButton";
 import { AuthShell } from "@/components/layout/AuthShell";
 import { COPY } from "@/content/copy";
-import { ACCOUNT_ROLE_LABELS } from "@/lib/application-config";
+import { APPLICATION_TYPE_LABELS } from "@/lib/application-config";
 import { requireApplicant } from "@/lib/auth/dal";
-import { getMyApplication } from "@/lib/data/applications";
-import { ROUTES } from "@/lib/routes";
+import { primaryApplicationType } from "@/lib/auth/types";
+import { getMyApplications } from "@/lib/data/applications";
+import { portalApplicationRoute } from "@/lib/routes";
 
 import { OnboardingForm } from "./_components/OnboardingForm";
 
 export const metadata: Metadata = { title: COPY.onboarding.title };
 
-/** Confirms the account type and display name, then creates the draft application. */
+/** Confirms the applications chosen at signup and the display name, then creates every draft application. */
 export default async function OnboardingPage() {
   const viewer = await requireApplicant();
-  const application = await getMyApplication();
+  const applications = await getMyApplications();
+  const continueHref = portalApplicationRoute(primaryApplicationType(viewer));
 
-  if (application) {
-    // createApplication revalidates this page, so this render redirect also runs inside that action's response.
-    // It targets the same route OnboardingForm navigates to on success, so the two navigations cannot race.
-    redirect(ROUTES.portalApplication);
+  if (viewer.applicationTypes.every((type) => applications.some((application) => application.type === type))) {
+    // createApplications revalidates this page, so this render redirect also runs inside that action's response.
+    // It targets the same URL OnboardingForm navigates to on success, so the two navigations cannot race.
+    redirect(continueHref);
   }
 
   return (
@@ -31,7 +33,11 @@ export default async function OnboardingPage() {
       actions={<SignOutButton />}
       footer={<p>{COPY.onboarding.wrongRole}</p>}
     >
-      <OnboardingForm accountRoleLabel={ACCOUNT_ROLE_LABELS[viewer.accountRole]} defaultDisplayName={viewer.displayName} />
+      <OnboardingForm
+        applicationTypeLabels={viewer.applicationTypes.map((type) => APPLICATION_TYPE_LABELS[type])}
+        continueHref={continueHref}
+        defaultDisplayName={viewer.displayName}
+      />
     </AuthShell>
   );
 }

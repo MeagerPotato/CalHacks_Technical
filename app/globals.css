@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Launchpad design tokens (PROJECT_PLAN.md section 13).
+ * CalHacks Mission Control design tokens (PROJECT_PLAN.md section 13).
  *
  * The semantic color names below are frozen: components, tests/unit/design-tokens.test.ts, and the Astra handoff
  * depend on them. Values may change only while the contrast test stays green.
@@ -35,11 +35,13 @@
   --color-focus: var(--color-navy);
   --color-focus-on-dark: var(--color-sky);
   --color-danger-edge: var(--color-coral);
+  /* Required-answer marker text: 5.58:1 on cream and 5.89:1 on white. */
+  --color-required: #b5382b;
 
   /* Shape */
   --radius-card: 1.25rem;
-  --radius-control: 0.75rem;
-  --shadow-card: 0 1px 2px 0 rgb(20 35 59 / 0.08);
+  --radius-control: 0.625rem;
+  --shadow-card: 0 4px 0 0 rgb(20 35 59 / 0.12);
 
   /* Motion. LIFTOFF_DURATION_MS and LANDING_DURATION_MS in components/art/motion.ts must equal these durations. */
   --duration-liftoff: 2400ms;
@@ -141,4 +143,107 @@
       animation: draw-in var(--duration-reveal) ease-out both;
     }
   }
+}
+
+/*
+ * Workshop surfaces and a finite, transform-only motion vocabulary.
+ *
+ * Textures never sit behind text as a background-image: axe cannot measure contrast over one, and
+ * e2e/support/ui.ts fails when it has to skip that check. The paper dots and the card rivet are pseudo-elements, and
+ * the heading over the readiness graph paper has an opaque fill.
+ */
+@layer base {
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: radial-gradient(rgb(20 35 59 / .065) .65px, transparent .65px);
+    background-size: 8px 8px;
+  }
+  h1, h2, h3 { letter-spacing: -.035em; text-wrap: balance; }
+  p { text-wrap: pretty; }
+  ::selection { background: var(--color-sky); color: var(--color-navy); }
+}
+@utility workshop-card {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background-color: var(--color-navy);
+    pointer-events: none;
+  }
+}
+@utility pressable {
+  position: relative;
+  box-shadow: 0 3px 0 var(--color-navy);
+  transition: transform 160ms ease-out;
+  /* A transform moves the hit area with the face. This transparent layer covers the ground the face just left, so a
+     click that starts near an edge still lands on the control. */
+  &::after { content: ""; position: absolute; inset: 0; }
+  @media (hover: hover) {
+    &:hover { transform: translateY(-2px); }
+    &:hover::after { bottom: -4px; }
+  }
+  &:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--color-navy); }
+  &:active::after { top: -6px; }
+  &:disabled, &[aria-disabled="true"] { transform: none; box-shadow: none; }
+}
+@utility landing-title {
+  font-size: clamp(3.2rem, 6.4vw, 5.5rem);
+  line-height: .98;
+  letter-spacing: -.055em;
+  max-width: 9ch;
+}
+@utility workshop-readiness {
+  padding: 1.25rem;
+  border: 2px solid var(--color-navy);
+  border-radius: var(--radius-card);
+  background-color: var(--color-page);
+  background-image: linear-gradient(rgb(20 35 59 / .06) 1px, transparent 1px), linear-gradient(90deg, rgb(20 35 59 / .06) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+@utility mission-legs {
+  position: relative;
+  & > li { border-top-width: 5px; }
+}
+@keyframes workshop-liftoff {
+  0%, 14% { transform: translateY(155px); }
+  24% { transform: translateY(157px); }
+  75%, 100% { transform: translateY(0); }
+}
+@keyframes workshop-exhaust {
+  0%, 12% { transform: scale(.65); opacity: 0; }
+  35%, 68% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.12); opacity: .35; }
+}
+@keyframes workshop-flame {
+  0%, 12% { transform: scaleY(.1); opacity: 0; }
+  28% { transform: scaleY(.75); opacity: 1; }
+  58% { transform: scaleY(1.15); }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+@keyframes workshop-touchdown {
+  0% { transform: translate(36px, -95px) rotate(8deg); }
+  72% { transform: translate(0, 3px) rotate(-2deg); }
+  88% { transform: translate(0, -2px); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+@keyframes workshop-celebrate {
+  from { transform: translateY(8px) scale(.9); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .art-drift { animation: var(--animate-float); }
+  .art-liftoff { animation: workshop-liftoff var(--duration-liftoff) cubic-bezier(.45, 0, .2, 1) both; }
+  .art-exhaust { transform-origin: 180px 435px; animation: workshop-exhaust var(--duration-liftoff) ease-out both; }
+  .art-flame { transform-origin: 0 64px; animation: workshop-flame var(--duration-liftoff) ease-out both; }
+  .art-touchdown { transform-origin: 200px 225px; animation: workshop-touchdown var(--duration-landing) ease-out both; }
+  .art-celebrate { transform-origin: 200px 150px; animation: workshop-celebrate 500ms ease-out 1100ms both; }
 }

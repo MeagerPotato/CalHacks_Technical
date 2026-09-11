@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  APPLICATION_LIMITS,
+  COUNTRY_CODES,
   getApplicationFieldKeys,
   getRequiredApplicationFieldKeys,
   hackerApplicationDraftSchema,
   hackerApplicationSchema,
-  isHttpLink,
+  isCalendarDate,
+  isProfileLink,
   judgeApplicationDraftSchema,
   judgeApplicationSchema,
   mergeApplicationResponses,
@@ -27,21 +30,30 @@ describe("hacker submission schema", () => {
 
     const errors = toFieldErrors(result.error);
     expect(Object.keys(errors).sort()).toEqual(getRequiredApplicationFieldKeys("hacker").sort());
-    expect(errors.preferredName).toEqual(["This field is required."]);
-    expect(errors.links).toBeUndefined();
+    expect(errors.fullName).toEqual(["This field is required."]);
+    expect(errors.birthdate).toEqual(["This field is required."]);
+    expect(errors.countryOfResidence).toEqual(["This field is required."]);
+    for (const optional of ["bio", "linkedinUrl", "githubUrl", "devpostUrl"]) {
+      expect(errors[optional], optional).toBeUndefined();
+    }
   });
 
-  it("trims text and rejects whitespace-only answers", () => {
-    const trimmed = hackerApplicationSchema.parse({ ...validHackerResponses, preferredName: "  Maya  " });
-    expect(trimmed.preferredName).toBe("Maya");
+  it("trims text and rejects whitespace-only required answers", () => {
+    const trimmed = hackerApplicationSchema.parse({ ...validHackerResponses, fullName: "  Maya  " });
+    expect(trimmed.fullName).toBe("Maya");
 
-    const blank = hackerApplicationSchema.safeParse({ ...validHackerResponses, bio: "   " });
-    expect(blank.success).toBe(false);
+    expect(hackerApplicationSchema.safeParse({ ...validHackerResponses, cityOfResidence: "   " }).success).toBe(false);
+    // The short biography is optional, so a blank one is allowed.
+    expect(hackerApplicationSchema.safeParse({ ...validHackerResponses, bio: "   " }).success).toBe(true);
   });
 
   it("enforces maximum lengths", () => {
-    const result = hackerApplicationSchema.safeParse({ ...validHackerResponses, buildGoals: "x".repeat(1501) });
-    expect(result.success).toBe(false);
+    expect(hackerApplicationSchema.safeParse({ ...validHackerResponses, buildGoals: "x".repeat(1501) }).success).toBe(
+      false,
+    );
+    expect(hackerApplicationSchema.safeParse({ ...validHackerResponses, fullName: "x".repeat(121) }).success).toBe(
+      false,
+    );
   });
 
   it("requires the code of conduct to be accepted", () => {
@@ -61,22 +73,76 @@ describe("hacker submission schema", () => {
     ).toBe(false);
   });
 
-  it("only accepts http and https links with a domain name", () => {
-    const withLinks = (links: string[]) => hackerApplicationSchema.safeParse({ ...validHackerResponses, links });
-    expect(withLinks(["https://example.com/me"]).success).toBe(true);
-    expect(withLinks(["http://example.com:8080/path?x=1#top"]).success).toBe(true);
-    expect(withLinks(["javascript:alert(1)"]).success).toBe(false);
-    expect(withLinks(["ftp://example.com/file"]).success).toBe(false);
-    expect(withLinks(["https://localhost:3000"]).success).toBe(false);
-    expect(withLinks(["https://example.com/a b"]).success).toBe(false);
-    expect(withLinks(Array.from({ length: 6 }, (_, i) => `https://example.com/${i}`)).success).toBe(false);
+  it("accepts only real birthdates within the allowed range", () => {
+    const withBirthdate = (birthdate: unknown) =>
+      hackerApplicationSchema.safeParse({ ...validHackerResponses, birthdate }).success;
+    expect(withBirthdate("2004-02-29")).toBe(true);
+    expect(withBirthdate(APPLICATION_LIMITS.birthdate.min)).toBe(true);
+    expect(withBirthdate(APPLICATION_LIMITS.birthdate.max)).toBe(true);
+    expect(withBirthdate("2005-02-29")).toBe(false);
+    expect(withBirthdate("2005-13-01")).toBe(false);
+    expect(withBirthdate("2005-04-31")).toBe(false);
+    expect(withBirthdate("1899-12-31")).toBe(false);
+    expect(withBirthdate("2026-09-21")).toBe(false);
+    expect(withBirthdate("2005-4-12")).toBe(false);
+    expect(withBirthdate("04/12/2005")).toBe(false);
+    expect(withBirthdate(" 2005-04-12")).toBe(false);
+    expect(withBirthdate(20050412)).toBe(false);
+
+    const message = hackerApplicationSchema.safeParse({ ...validHackerResponses, birthdate: "2005-02-30" });
+    expect(message.success ? [] : toFieldErrors(message.error).birthdate).toEqual([
+      "Enter a real date from January 1, 1900 to September 20, 2026.",
+    ]);
   });
 
-  it("exposes the submission link rule for safely rendering stored links", () => {
-    expect(isHttpLink("https://example.com")).toBe(true);
-    expect(isHttpLink("javascript:alert(1)")).toBe(false);
-    expect(isHttpLink(`https://example.com/${"p".repeat(300)}`)).toBe(false);
-    expect(isHttpLink(42)).toBe(false);
+  it("recognizes real calendar dates", () => {
+    expect(isCalendarDate("2024-02-29")).toBe(true);
+    expect(isCalendarDate("2023-02-29")).toBe(false);
+    expect(isCalendarDate("0050-01-01")).toBe(false);
+    expect(isCalendarDate("2024-00-10")).toBe(false);
+    expect(isCalendarDate(null)).toBe(false);
+  });
+
+  it("accepts only listed country codes, with the United States first", () => {
+    const withCountry = (countryOfResidence: unknown) =>
+      hackerApplicationSchema.safeParse({ ...validHackerResponses, countryOfResidence }).success;
+    expect(COUNTRY_CODES[0]).toBe("US");
+    expect(withCountry("CA")).toBe(true);
+    expect(withCountry("us")).toBe(false);
+    expect(withCountry("United States")).toBe(false);
+    expect(withCountry("EU")).toBe(false);
+  });
+
+  it("accepts only profile links on each field's own site", () => {
+    const withLink = (key: string, value: unknown) =>
+      hackerApplicationSchema.safeParse({ ...validHackerResponses, [key]: value }).success;
+
+    expect(withLink("linkedinUrl", "https://www.linkedin.com/in/maya-chen")).toBe(true);
+    expect(withLink("linkedinUrl", "https://linkedin.com/in/maya-chen/")).toBe(true);
+    expect(withLink("linkedinUrl", "https://uk.linkedin.com/in/maya")).toBe(true);
+    expect(withLink("linkedinUrl", "https://www.linkedin.com/company/example")).toBe(false);
+    expect(withLink("linkedinUrl", "https://www.linkedin.com/in/ab")).toBe(false);
+    expect(withLink("linkedinUrl", "https://github.com/maya")).toBe(false);
+
+    expect(withLink("githubUrl", "https://github.com/maya-chen")).toBe(true);
+    expect(withLink("githubUrl", "http://www.github.com/m")).toBe(true);
+    expect(withLink("githubUrl", "https://github.com/-maya")).toBe(false);
+    expect(withLink("githubUrl", "https://github.com/maya-")).toBe(false);
+    expect(withLink("githubUrl", "https://github.com/maya--chen")).toBe(false);
+    expect(withLink("githubUrl", "https://github.com/maya/repo")).toBe(false);
+    expect(withLink("githubUrl", `https://github.com/${"a".repeat(40)}`)).toBe(false);
+    expect(withLink("githubUrl", " https://github.com/maya")).toBe(false);
+
+    expect(withLink("devpostUrl", "https://devpost.com/maya_chen")).toBe(true);
+    expect(withLink("devpostUrl", "https://devpost.com/software/project")).toBe(false);
+    expect(withLink("devpostUrl", "javascript:alert(1)")).toBe(false);
+    expect(withLink("devpostUrl", "")).toBe(false);
+  });
+
+  it("exposes the profile link rule for safely rendering stored links", () => {
+    expect(isProfileLink("githubUrl", "https://github.com/maya")).toBe(true);
+    expect(isProfileLink("githubUrl", "https://www.linkedin.com/in/maya")).toBe(false);
+    expect(isProfileLink("devpostUrl", 42)).toBe(false);
   });
 
   it("rejects non-integer, string, and out-of-range numbers", () => {
@@ -107,14 +173,15 @@ describe("judge submission schema", () => {
     expect(judgeApplicationSchema.safeParse({ ...validJudgeResponses, company: "" }).success).toBe(true);
   });
 
-  it("has genuinely different questions from the hacker form", () => {
+  it("shares the About you section with the hacker form and has different questions after it", () => {
     expect(judgeApplicationSchema.safeParse(validHackerResponses).success).toBe(false);
     expect(hackerApplicationSchema.safeParse(validJudgeResponses).success).toBe(false);
 
     const hackerRequired = getRequiredApplicationFieldKeys("hacker");
     const judgeRequired = getRequiredApplicationFieldKeys("judge");
-    expect(hackerRequired).toHaveLength(12);
-    expect(judgeRequired).toHaveLength(12);
+    expect(hackerRequired).toHaveLength(13);
+    expect(judgeRequired).toHaveLength(13);
+    expect(getApplicationFieldKeys("hacker").slice(0, 8)).toEqual(getApplicationFieldKeys("judge").slice(0, 8));
     expect(hackerRequired.filter((key) => !judgeRequired.includes(key))).toEqual(
       expect.arrayContaining(["school", "major", "graduationYear", "skills", "buildGoals"]),
     );
@@ -136,13 +203,16 @@ describe("draft schemas", () => {
     expect(judgeApplicationDraftSchema.safeParse({ expertiseAreas: null, codeOfConductAccepted: false }).success).toBe(
       true,
     );
+    expect(judgeApplicationDraftSchema.safeParse({ birthdate: null, githubUrl: null }).success).toBe(true);
   });
 
-  it("still enforce types, option values, and limits", () => {
+  it("still enforce types, option values, limits, real dates, and profile links", () => {
     expect(hackerApplicationDraftSchema.safeParse({ graduationYear: "2027" }).success).toBe(false);
     expect(hackerApplicationDraftSchema.safeParse({ skills: ["cooking"] }).success).toBe(false);
     expect(hackerApplicationDraftSchema.safeParse({ bio: "x".repeat(601) }).success).toBe(false);
-    expect(judgeApplicationDraftSchema.safeParse({ links: "https://example.com" }).success).toBe(false);
+    expect(hackerApplicationDraftSchema.safeParse({ birthdate: "2005-02-30" }).success).toBe(false);
+    expect(hackerApplicationDraftSchema.safeParse({ countryOfResidence: "Narnia" }).success).toBe(false);
+    expect(judgeApplicationDraftSchema.safeParse({ githubUrl: "https://example.com" }).success).toBe(false);
   });
 });
 
@@ -150,10 +220,10 @@ describe("mergeApplicationResponses", () => {
   it("keeps stored answers, applies the patch, clears null/blank values, and drops unknown keys", () => {
     const merged = mergeApplicationResponses(
       "hacker",
-      { preferredName: "Maya", bio: "Builder", legacyField: "remove me" },
-      { bio: null, school: "Example University", location: "   ", notAField: "ignored" },
+      { fullName: "Maya", bio: "Builder", legacyField: "remove me", preferredName: "Old key" },
+      { bio: null, school: "Example University", cityOfResidence: "   ", notAField: "ignored" },
     );
-    expect(merged).toEqual({ preferredName: "Maya", school: "Example University" });
+    expect(merged).toEqual({ fullName: "Maya", school: "Example University" });
   });
 
   it("ignores undefined patch values", () => {
@@ -170,6 +240,8 @@ describe("parseStoredResponses", () => {
         school: "Example University",
         graduationYear: "not a number",
         skills: ["web", "not-an-option"],
+        birthdate: "2005-02-30",
+        githubUrl: "https://example.com/maya",
         unknown: "x",
       }),
     ).toEqual({ school: "Example University" });
@@ -191,5 +263,18 @@ describe("field keys", () => {
       expect(new Set(keys).size).toBe(keys.length);
       expect([...keys].sort()).toEqual(Object.keys(schema.shape).sort());
     }
+  });
+
+  it("orders About you as specified for Round 2", () => {
+    expect(getApplicationFieldKeys("hacker").slice(0, 8)).toEqual([
+      "fullName",
+      "birthdate",
+      "countryOfResidence",
+      "cityOfResidence",
+      "linkedinUrl",
+      "githubUrl",
+      "devpostUrl",
+      "bio",
+    ]);
   });
 });

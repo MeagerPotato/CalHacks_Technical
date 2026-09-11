@@ -1,12 +1,39 @@
 import { describe, expect, it } from "vitest";
 
-import { APPLICATION_DEADLINE, EVENT_TIME_ZONE } from "@/lib/event";
-import { formatEventDateTime, toTimestampView } from "@/lib/format/datetime";
+import { APPLICATION_DEADLINE, EVENT_SCHEDULE, EVENT_TIME_ZONE } from "@/lib/event";
+import {
+  formatCalendarDate,
+  formatEventDateTime,
+  toDateRangeView,
+  toDateView,
+  toTimestampView,
+} from "@/lib/format/datetime";
 
 describe("event constants", () => {
-  it("uses Pacific time and a deadline that is null or a parseable instant", () => {
+  it("uses Pacific time, and every schedule date is null or a parseable instant, in schedule order", () => {
     expect(EVENT_TIME_ZONE).toBe("America/Los_Angeles");
-    expect(APPLICATION_DEADLINE === null || toTimestampView(APPLICATION_DEADLINE) !== null).toBe(true);
+    expect(EVENT_SCHEDULE.applicationDeadline).toBe(APPLICATION_DEADLINE);
+
+    const { applicationsOpenAt, applicationDeadline, resultsReleasedOn, eventDates } = EVENT_SCHEDULE;
+    const instants = [applicationsOpenAt, applicationDeadline, resultsReleasedOn, eventDates?.startsAt, eventDates?.endsAt]
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => {
+        const view = toTimestampView(value);
+        expect(view, value).not.toBeNull();
+        return Date.parse(view?.iso ?? "");
+      });
+    expect(instants).toEqual([...instants].sort((first, second) => first - second));
+  });
+
+  it("holds the published Cal Hacks 13.0 regular round", () => {
+    expect(EVENT_SCHEDULE.applicationsOpenAt).toBeNull();
+    expect(toTimestampView(EVENT_SCHEDULE.applicationDeadline)?.label).toBe("Sep 20, 2026, 11:59 PM PDT");
+    expect(toDateView(EVENT_SCHEDULE.resultsReleasedOn)).toEqual({ iso: "2026-09-25", label: "Sep 25, 2026" });
+    const { eventDates } = EVENT_SCHEDULE;
+    expect(eventDates && toDateRangeView(eventDates.startsAt, eventDates.endsAt)).toEqual({
+      iso: "2026-10-23",
+      label: "Oct 23–25, 2026",
+    });
   });
 });
 
@@ -92,6 +119,57 @@ describe("toTimestampView", () => {
     "returns null for %j",
     (value) => {
       expect(toTimestampView(value)).toBeNull();
+    },
+  );
+});
+
+describe("toDateView", () => {
+  it("returns the calendar day in the event time zone", () => {
+    expect(toDateView("2026-09-25T00:00:00-07:00")).toEqual({ iso: "2026-09-25", label: "Sep 25, 2026" });
+    // 11:30 PM Pacific on September 25 is already September 26 in UTC.
+    expect(toDateView("2026-09-26T06:30:00Z")).toEqual({ iso: "2026-09-25", label: "Sep 25, 2026" });
+    expect(toDateView("2026-01-05T12:00:00-08:00")).toEqual({ iso: "2026-01-05", label: "Jan 5, 2026" });
+  });
+
+  it.each([null, undefined, "", "2026-09-25", "2026-02-30T00:00:00Z"])("returns null for %j", (value) => {
+    expect(toDateView(value)).toBeNull();
+  });
+});
+
+describe("toDateRangeView", () => {
+  it.each([
+    ["one day", "2026-10-23T00:00:00-07:00", "2026-10-24T00:00:00-07:00", "Oct 23, 2026"],
+    ["days within a month", "2026-10-23T00:00:00-07:00", "2026-10-26T00:00:00-07:00", "Oct 23–25, 2026"],
+    [
+      "days across months and the end of daylight saving time",
+      "2026-10-30T00:00:00-07:00",
+      "2026-11-02T00:00:00-08:00",
+      "Oct 30 – Nov 1, 2026",
+    ],
+    ["days across years", "2026-12-31T00:00:00-08:00", "2027-01-03T00:00:00-08:00", "Dec 31, 2026 – Jan 2, 2027"],
+  ])("labels %s and uses the first day as the machine-readable date", (_, startsAt, endsAt, label) => {
+    expect(toDateRangeView(startsAt, endsAt)).toEqual({ iso: startsAt.slice(0, 10), label });
+  });
+
+  it("returns null for unparseable values or an end that is not after the start", () => {
+    expect(toDateRangeView("not a date", "2026-10-26T00:00:00-07:00")).toBeNull();
+    expect(toDateRangeView("2026-10-23T00:00:00-07:00", "2026-10-26")).toBeNull();
+    expect(toDateRangeView("2026-10-23T00:00:00-07:00", "2026-10-23T00:00:00-07:00")).toBeNull();
+    expect(toDateRangeView("2026-10-26T00:00:00-07:00", "2026-10-23T00:00:00-07:00")).toBeNull();
+  });
+});
+
+describe("formatCalendarDate", () => {
+  it("formats a YYYY-MM-DD date without shifting the day", () => {
+    expect(formatCalendarDate("2006-02-14")).toBe("Feb 14, 2006");
+    expect(formatCalendarDate("2008-02-29")).toBe("Feb 29, 2008");
+    expect(formatCalendarDate(" 1999-12-31 ")).toBe("Dec 31, 1999");
+  });
+
+  it.each([null, undefined, "", "2006-02-30", "2007-02-29", "2006-13-01", "0099-01-01", "2006-2-14", "2006-02-14T00:00:00Z"])(
+    "returns null for %j",
+    (value) => {
+      expect(formatCalendarDate(value)).toBeNull();
     },
   );
 });
