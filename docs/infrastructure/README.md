@@ -2,6 +2,15 @@
 
 This folder hands off the infrastructure phase to the product phase. It documents the backend that product pages build on. The project `README.md` belongs to the product phase.
 
+Phase 2, the applicant product, builds on this contract without changing migrations or RLS. Its backend additions are documented here:
+
+- the `/auth/callback` confirmation route;
+- the optional `SITE_URL`;
+- local Auth settings for callback URLs and test volume;
+- proxy redirects limited to page loads.
+
+The product layer itself (routes, containers, view models, components, and the Astra handoff) is documented in [docs/frontend](../frontend/README.md).
+
 ## What Phase 1 delivers
 
 - **Supabase:** migrations, Row Level Security, response validation and workflow guard triggers, organizer read functions, and seed data (`supabase/`).
@@ -12,7 +21,7 @@ This folder hands off the infrastructure phase to the product phase. It document
 - **Types:** generated database types (`types/database.ts`).
 - **Tests:** unit and integration suites (`tests/`).
 
-Phase 1 intentionally has no product pages, visual design, or component library. `app/layout.tsx` and `app/page.tsx` are minimal placeholders so the app builds.
+Phase 1 intentionally had no product pages, visual design, or component library. Phase 2 replaced its placeholder `app/layout.tsx` and `app/page.tsx`.
 
 ## Documents
 
@@ -49,14 +58,15 @@ You need Node.js 22.12 or newer and Docker Desktop.
 
 ## Known limitations
 
-- **No product UI.** Phase 2 builds every planned page on the contract.
+- **No organizer UI yet.** Phase 2 builds the applicant pages. The organizer pages are Phase 3.
 - **Email confirmation.**
-  - It is off locally. Hosted projects turn it on by default, and Phase 1 has no `/auth/callback` route.
-  - For the demo, either turn off "Confirm email" in the hosted project or add a confirmation route.
-  - With confirmation on, `signUp` returns `requiresEmailConfirmation: true`.
+  - It is off locally. Hosted projects turn it on by default, and Phase 2's `/auth/callback` route completes confirmation links (PKCE code flow only).
+  - This deployment keeps it on, so the hosted project needs custom SMTP: Supabase's built-in sender emails only members of the project's organization (see [environment-and-deployment.md](environment-and-deployment.md#deployment-decisions)).
+  - A confirmation link works only in the browser where the account was created, because the PKCE verifier is a cookie in that browser. Anywhere else, `/login` explains that the link must be opened in the same browser.
+  - With confirmation on, `signUp` returns `requiresEmailConfirmation: true` and the signup page shows a check-your-email notice.
   - With confirmation on, Supabase also reports success for an already-registered email instead of `email_taken`, to prevent account enumeration.
 - **Email ownership is not verified while confirmation is off.** Anyone can register any address, so applicant emails shown to organizers are unverified. Organizer accounts are safe only if the admin creates the account and promotes it immediately; never promote an account that already existed (see [environment-and-deployment.md](environment-and-deployment.md)).
-- **Session plumbing is not covered by automated tests.** Cookie handling in `lib/supabase/server.ts` and `lib/supabase/proxy.ts` (called from the root `proxy.ts`) is verified by the production build and a manual `next start` check. The integration tests call Server Actions with a real signed-in Supabase client in place of the cookie-based one.
+- **Session plumbing is tested end to end rather than in isolation.** `proxy.test.ts` covers the redirect rules with a mocked client, and the Playwright suite signs real users in through the cookie-based clients. The integration tests still call Server Actions with a real signed-in Supabase client in place of the cookie-based one.
 - **Hosted Auth rate limits are per IP.** Server Actions call Supabase Auth from the server, so many visitors can share an IP. Raise the sign-up and sign-in limit for a busy live demo.
 - **One review per application.** The organizer who starts a review owns it. Any organizer can release the decision once the review is complete. Assigning multiple reviewers is not supported.
 - **Blind review is presentation-level.** Organizers are allowed to read applicant identity; the list view includes name and email. The review workspace hides identity until it is explicitly revealed.

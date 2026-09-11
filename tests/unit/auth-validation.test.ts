@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { profileUpdateSchema, signInSchema, signUpSchema } from "@/lib/validation/auth";
+import { toPlainInput } from "@/lib/validation/form-data";
 
 const validSignUp = {
   email: "  New.Applicant@Example.com ",
@@ -48,5 +49,25 @@ describe("profileUpdateSchema", () => {
     expect(profileUpdateSchema.safeParse({ displayName: "  " }).success).toBe(false);
     expect(profileUpdateSchema.safeParse({ displayName: "x".repeat(81) }).success).toBe(false);
     expect(profileUpdateSchema.parse({ displayName: " Maya " }).displayName).toBe("Maya");
+  });
+});
+
+describe("auth FormData input", () => {
+  it("parses a progressively enhanced form and drops React's $ACTION_ fields", () => {
+    const formData = new FormData();
+    formData.append("$ACTION_ID_abc", "");
+    formData.append("$ACTION_REF_1", "");
+    formData.append("email", "  Maya@Example.com ");
+    formData.append("password", "correct-horse-battery");
+    formData.append("accountRole", "judge");
+
+    const signIn = signInSchema.parse(toPlainInput(formData));
+    const signUp = signUpSchema.parse(toPlainInput(formData));
+
+    expect(signIn).toEqual({ email: "maya@example.com", password: "correct-horse-battery" });
+    expect(signUp).toEqual({ email: "maya@example.com", password: "correct-horse-battery", accountRole: "judge" });
+    for (const output of [signIn, signUp]) {
+      expect(Object.keys(output).filter((key) => key.startsWith("$ACTION"))).toEqual([]);
+    }
   });
 });

@@ -15,6 +15,7 @@ import type { ApplicationListPage } from "@/lib/data/types";
 import type { DecisionStatus } from "@/lib/domain/enums";
 
 import { validHackerResponses, validJudgeResponses } from "../fixtures/applications";
+import { completeHackerRubric, completeJudgeRubric } from "../fixtures/reviews";
 import {
   actAs,
   createApplicationAs,
@@ -33,17 +34,6 @@ import {
 
 /** Unique search token so list assertions only see this file's applications. */
 const token = `wf${randomUUID().replace(/-/g, "").slice(0, 10)}`;
-
-const completeHackerRubric = {
-  scores: { motivation: 4, initiative: 5, growth: 3, community: 4 },
-  notes: "Strong fit.",
-  recommendation: "strong_yes",
-} as const;
-
-const completeJudgeRubric = {
-  scores: { expertise: 5, evaluation: 4, motivation: 4, availability: 3 },
-  recommendation: "yes",
-} as const;
 
 let organizer: TestUser;
 let otherOrganizer: TestUser;

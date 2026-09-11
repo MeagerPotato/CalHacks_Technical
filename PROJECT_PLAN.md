@@ -14,6 +14,13 @@ Claude must not design or implement the applicant or organizer interface, select
 
 After Astra finishes the frontend, Claude may be handed a separate deployment-only task because the user's Vercel and Supabase connectors are configured there. That later task may configure and deploy infrastructure, but it must not redesign or restyle Astra's work.
 
+> **Phase 2 ownership amendment (2026-09-10).** Astra's usage is limited, so the user reassigned Phase 2 (the applicant product). Where this plan assigns Phase 2 implementation to Astra, this amendment wins.
+>
+> - **Claude Code builds Phase 2 end to end:** backend deltas (auth callback, site URL, proxy), every route and client container, editor state, validation display, accessibility, loading and error states, and functional components styled with the §13 palette and type as a baseline. It also adds neutral art placeholders, baseline reduced-motion-safe motion, and unit, integration, and end-to-end tests.
+> - **Astra's Phase 2 work is creative only:** original illustrations and art replacing the `components/art/` placeholders, motion choreography beyond the baseline, visual polish within the frozen DOM and contrast rules, the voice of `COPY`, `FIELD_COPY`, and `SECTION_COPY` in `content/copy.ts`, and final look-and-feel QA.
+>
+> See `CLAUDE.md` and `docs/frontend/astra-handoff.md`. Phase 3 ownership is unchanged until the user decides otherwise.
+
 ## 1. Product thesis
 
 Build a small but convincing hackathon operating system called **Launchpad**.
@@ -594,7 +601,7 @@ Deploy early. A plain working production app is safer than a polished local-only
 - Run lint, typecheck, tests, and production build.
 - Stop after reporting results; do not implement product pages or creative UI.
 
-### Phase 2 — applicant product and frontend (Astra, 3 hours)
+### Phase 2 — applicant product and frontend (Claude builds; Astra adds art, motion, polish, and copy voice — see the §0 amendment)
 
 - Signup/login/onboarding.
 - Hacker and Judge forms.

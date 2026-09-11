@@ -8,6 +8,7 @@ import type { ProfileUpdateData, SignInData, SignOutData, SignUpData } from "@/l
 import { authorizeAction } from "@/lib/auth/authorize";
 import { loadViewer } from "@/lib/auth/dal";
 import type { Viewer } from "@/lib/auth/types";
+import { getSiteUrl } from "@/lib/env";
 import { ROUTES, getHomeRouteForRole, getSafeRedirectPath } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -42,6 +43,16 @@ export async function signUp(input: SignUpInput | FormData): Promise<ActionResul
   }
 
   const { email, password, accountRole, displayName } = parsed.data;
+
+  // Resolved before calling Supabase so a misconfigured origin never sends a broken confirmation link.
+  let siteUrl: string | null;
+  try {
+    siteUrl = getSiteUrl();
+  } catch (siteUrlError) {
+    logServerError("signUp:siteUrl", siteUrlError);
+    return fail("unexpected_error");
+  }
+
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signUp({
@@ -52,6 +63,8 @@ export async function signUp(input: SignUpInput | FormData): Promise<ActionResul
         account_role: accountRole,
         ...(displayName ? { display_name: displayName } : {}),
       },
+      // Confirmation links return to /auth/callback on a configured origin, never a request Host header.
+      ...(siteUrl ? { emailRedirectTo: new URL(ROUTES.authCallback, siteUrl).toString() } : {}),
     },
   });
 

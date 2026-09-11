@@ -1,56 +1,58 @@
-# Claude Code Instructions — Infrastructure Only
+# Claude Code Instructions — Phase 2 Applicant Product
 
-Read `PROJECT_PLAN.md` completely before making changes. It is the product and technical source of truth.
+Read `PROJECT_PLAN.md` completely before making changes. It is the product and technical source of truth. Phase 1 (infrastructure) is merged; its contracts are documented in `docs/infrastructure/backend-contract.md`, `docs/infrastructure/database.md`, and `docs/infrastructure/testing.md`.
 
 ## Your assignment
 
-Complete **Phase 1 — infrastructure vertical slice** only, then stop and report your results.
+Build **Phase 2 — the applicant product**, then stop and report your results. Phase 2 covers:
 
-You own:
+- signup, login, and onboarding;
+- the Hacker and Judge application editor, with draft saving and Launch Readiness;
+- review and submission;
+- the applicant portal and the Rocket Mission Tracker.
 
-- Scaffolding the Next.js, TypeScript, Tailwind, and Supabase project.
-- Supabase migrations, enums, tables, indexes, constraints, triggers, and seed data.
-- Row Level Security policies and role/ownership authorization.
-- Supabase SSR browser/server clients and session plumbing.
-- The server-side data access layer.
-- Zod schemas for Hacker and Judge applications and organizer reviews.
-- Server Actions for auth, draft saving, submission, reviews, and Accepted/Waitlisted decisions.
-- Generated database types and stable typed action results for the frontend.
-- Backend-focused tests or scripts proving the data and authorization flow.
-- `.env.example`, environment-variable documentation, and deployment configuration.
-- Lint, typecheck, test, and production-build verification.
+Do not start Phase 3 (organizer pages).
 
-## Hard ownership boundary
+The user directed that Astra's limited usage go only to creative work. You own everything else:
 
-Astra will own all product UX, creative direction, and frontend implementation after your handoff.
+- **Backend deltas:** the auth callback route, site URL and email redirect, proxy behavior, local Supabase configuration, and their tests.
+- **`app/**`:** every route; the loading, error, and not-found states; and the client containers. That includes guards, data loading, Server Action calls, editor state, focus management, navigation guards, and live announcements.
+- **Pure logic** in `lib/editor`, `lib/view-models`, `lib/client`, `lib/format`, and `lib/event.ts`.
+- **The functional component layer in `components/**`:** primitives, layouts, and views. Build them to the plan's section 13 baseline (palette, type, radii, borders, focus rings, contrast) and the frozen DOM contract.
+- **Copy:** plan-literal strings in `LOCKED`, and neutral placeholder text in `COPY` (both in `content/copy.ts`).
+- **Placeholders and motion:** neutral, token-colored placeholders in `components/art/`, plus the plan's baseline CSS motion.
+- **Verification and handoff:** unit tests, Playwright end-to-end and accessibility tests, docs, and the Astra handoff.
+
+## Astra's creative scope (do not do this work)
+
+- Illustrations, mascots, rockets, planets, stickers, and other decorative assets that replace the placeholders in `components/art/`.
+- Motion design beyond the plan baseline: liftoff, landing, float, and reveal choreography and curves.
+- Visual polish of views and primitives (composition, spacing rhythm, texture, hero layout), staying within the frozen DOM contract and the contrast rules.
+- The voice of the supporting copy in `COPY`, `FIELD_COPY`, and `SECTION_COPY`.
+- Final look-and-feel QA.
+
+Keep `docs/frontend/astra-handoff.md` accurate so Astra never has to touch backend code, routing, state, validation, or tests.
+
+## Architecture boundaries (enforced by `eslint.config.mjs`)
+
+- **`app/**` holds logic only.** No `className` or `style`, except in `app/layout.tsx` and `app/global-error.tsx`.
+- **`components/**` is presentational.** No runtime imports of any of these (type-only imports are allowed):
+  - Server Actions, auth, data, Supabase, validation, editor, view-model, or formatting modules;
+  - `next/navigation`, `next/headers`, `next/cache`, `next/link`, or `server-only`.
+- **Views take display-ready props.** They attach event handlers only when a callback is provided.
+- **All user-facing text** comes from `content/copy.ts` or `lib/application-config.ts`. Do not invent product facts such as dates, durations, prizes, or notifications.
+
+## Hard rules
 
 Do not:
 
-- Build or style applicant or organizer product pages.
-- Create the product component library or choose visual primitives.
-- Select fonts, colors, spacing, illustration style, or animation behavior.
-- Write marketing copy or creatively reinterpret the page specifications.
-- Generate images, icons, mascots, rockets, planets, or decorative assets.
-- Implement the visual experiences for Mission Review Queue, Blind Review Mode, Launch Readiness, Expertise Radar, or Rocket Mission Tracker.
 - Replace Supabase with mock data or client-only state.
 - Expose a Supabase service-role key in application code.
 - Allow a public user to select or promote themselves to Organizer.
 - Weaken or bypass RLS to make tests pass.
-
-Framework-generated `app/layout.tsx` and a plain diagnostic `app/page.tsx` are permitted only as needed to verify that the scaffold builds. Do not create the final route pages listed in the plan. Do not install a UI component library for Astra.
-
-## Required backend contract
-
-Expose documented, typed interfaces that Astra can consume without changing the infrastructure:
-
-- Current authenticated profile and role lookup.
-- Create/load/save/submit the current user's application.
-- Role-specific validation errors and completion calculation.
-- Organizer dashboard aggregates, including Judge expertise counts.
-- Filtered application listing and next-unreviewed lookup.
-- Load/save/complete an organizer review.
-- Release an Accepted or Waitlisted decision.
-- Mission status fields: `status`, `launched_at`, `review_started_at`, and `decision_released_at`.
+- Install a third-party UI component library. Lucide icons are approved by the plan.
+- Query Supabase from client components. Pages use the existing data-access layer and typed Server Actions.
+- Change migrations or RLS policies unless a Phase 2 flow is blocked without it. Any such change needs tests and must be documented in `docs/infrastructure/database.md`.
 
 Server Actions must authenticate and authorize every mutation independently. RLS remains the final database boundary.
 
@@ -58,13 +60,12 @@ Server Actions must authenticate and authorize every mutation independently. RLS
 
 Before stopping:
 
-1. Verify that public signup can create only Hacker or Judge accounts.
-2. Verify that one applicant can save and submit only their own application.
-3. Verify that submitted applications are locked from applicant edits.
-4. Verify that an Organizer can list applications, save a review, and release only Accepted or Waitlisted.
-5. Verify that an ordinary applicant cannot read other applications, reviews, or organizer data.
-6. Run lint, typecheck, backend tests, and a production build.
-7. Summarize every created migration, exported schema/action, environment variable, test command, and known limitation for Astra.
+1. Verify that a Hacker and a Judge can each sign up, onboard, save a partial draft, see Launch Readiness update, review, and submit.
+2. Verify that invalid answers show field errors and an error summary, and that submitted applications render read-only.
+3. Verify that the portal and the mission tracker reflect real `status`, `launched_at`, `review_started_at`, and `decision_released_at` values, and that the decision appears only after the landing moment.
+4. Verify that signed-out users and applicants cannot reach other users' data or organizer data.
+5. Verify that keyboard-only and reduced-motion journeys work and that automated accessibility checks pass.
+6. Run `npm run verify`, `npm run test:integration`, `npm run test:e2e`, and `npm run db:advisors`.
+7. Update the docs, write the Astra handoff, and give the user a prompt to hand to Astra.
 
-Do not continue into Phase 2. End your response with a clear handoff stating whether Phase 1 is ready for Astra.
-
+Make local commits only. Do not push unless the user asks.
